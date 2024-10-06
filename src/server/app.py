@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 import random
 import string
+import os
 
 app = Flask(__name__, static_folder='../client')
 
