@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create or Join Lobby</title>
+</head>
+<body>
+    <h1>Create a New Lobby</h1>
+    <form action="/create" method="post">
+        <button type="submit">Create Lobby</button>
+    </form>
+
+    <h1>Join an Existing Lobby</h1>
+    <form action="/join" method="post">
+        <input type="text" name="code" placeholder="Enter code" required>
+        <button type="submit">Join Lobby</button>
+    </form>
+</body>
+</html>
