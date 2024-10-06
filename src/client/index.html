@@ -37,9 +37,10 @@
         <button onclick="submitPlayerName()">Submit</button>
     </div>
 
-    <!-- Lobby screen to show player names -->
+    <!-- Lobby screen to show player names and lobby code -->
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
+        <p>Lobby Code: <span id="lobby-code"></span></p>
         <ul id="player-list">
             <li id="slot-1">Waiting for player...</li>
             <li id="slot-2">Waiting for player...</li>
@@ -56,6 +57,7 @@
 
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
+        let lobbyCode = '';  // Store the generated lobby code
 
         function handleCreateLobby(event) {
             event.preventDefault();
@@ -90,6 +92,11 @@
                             players: document.getElementById("players").value,
                             player_name: playerName
                         })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        lobbyCode = data.lobby_code;
+                        document.getElementById("lobby-code").innerText = lobbyCode;
                     });
                 } else if (currentAction === 'join') {
                     // Send player name and join code to backend (for joining)
@@ -102,6 +109,11 @@
                             code: document.getElementById("join-code").value,
                             player_name: playerName
                         })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        lobbyCode = data.lobby_code;
+                        document.getElementById("lobby-code").innerText = lobbyCode;
                     });
                 }
             }
