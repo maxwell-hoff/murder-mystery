@@ -9,24 +9,26 @@
     </style>
 </head>
 <body>
-    <h1>Create a New Lobby</h1>
-    <!-- Create Lobby Form -->
-    <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
-        <label for="rooms">Rooms Available (max 10):</label>
-        <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
-        
-        <label for="players">Number of Players (max 10):</label>
-        <input type="number" id="players" name="players" min="1" max="10" required><br><br>
-        
-        <button type="submit">Create Lobby</button>
-    </form>
+    <div id="create-join-section">
+        <h1>Create a New Lobby</h1>
+        <!-- Create Lobby Form -->
+        <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+            <label for="rooms">Rooms Available (max 10):</label>
+            <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
+            
+            <label for="players">Number of Players (max 10):</label>
+            <input type="number" id="players" name="players" min="1" max="10" required><br><br>
+            
+            <button type="submit">Create Lobby</button>
+        </form>
 
-    <h1>Join an Existing Lobby</h1>
-    <!-- Join Lobby Form -->
-    <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
-        <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
-        <button type="submit">Join Lobby</button>
-    </form>
+        <h1>Join an Existing Lobby</h1>
+        <!-- Join Lobby Form -->
+        <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
+            <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
+            <button type="submit">Join Lobby</button>
+        </form>
+    </div>
 
     <!-- Popup to ask for player name (used for both create and join) -->
     <div id="name-popup" class="hidden">
@@ -58,14 +60,14 @@
         function handleCreateLobby(event) {
             event.preventDefault();
             currentAction = 'create';
-            document.getElementById("create-lobby-form").classList.add("hidden");
+            document.getElementById("create-join-section").classList.add("hidden");
             document.getElementById("name-popup").classList.remove("hidden");
         }
 
         function handleJoinLobby(event) {
             event.preventDefault();
             currentAction = 'join';
-            document.getElementById("join-lobby-form").classList.add("hidden");
+            document.getElementById("create-join-section").classList.add("hidden");
             document.getElementById("name-popup").classList.remove("hidden");
         }
 
