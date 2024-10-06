@@ -1,8 +1,8 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 import random
 import string
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../client')
 
 lobbies = {}
 
@@ -11,7 +11,8 @@ def generate_code():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return send_from_directory(app.static_folder, 'index.html')
+    # return render_template('index.html')
 
 @app.route('/create', methods=['POST'])
 def create_lobby():
