@@ -78,7 +78,6 @@
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
-                document.getElementById("slot-1").innerText = playerName;
 
                 if (currentAction === 'create') {
                     // Send player name and lobby data to backend (for creating)
@@ -97,6 +96,7 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
+                        updatePlayerList(data.player_names);
                     });
                 } else if (currentAction === 'join') {
                     // Send player name and join code to backend (for joining)
@@ -114,8 +114,16 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
+                        updatePlayerList(data.player_names);
                     });
                 }
+            }
+        }
+
+        // Function to update the player list
+        function updatePlayerList(playerNames) {
+            for (let i = 0; i < playerNames.length; i++) {
+                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
             }
         }
     </script>

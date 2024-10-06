@@ -33,7 +33,7 @@ def create_lobby():
     }
 
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
-    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code})
+    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
 
 @app.route('/join', methods=['POST'])
 def join_lobby():
@@ -44,7 +44,7 @@ def join_lobby():
     if lobby_code in lobbies:
         lobbies[lobby_code]['player_names'].append(player_name)
         print(f"Player {player_name} joined lobby {lobby_code}.")
-        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code})
+        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
