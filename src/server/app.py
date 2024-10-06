@@ -17,21 +17,29 @@ def index():
 
 # @app.route('/create', methods=['POST'])
 # def create_lobby():
-#     code = generate_code()
-#     lobbies[code] = {"players": []}
-#     return redirect(url_for('lobby', code=code))
+#     # Retrieve form data
+#     rooms = request.form['rooms']
+#     players = request.form['players']
+    
+#     # You can process these values here and create the lobby
+#     print(f"Lobby created with {rooms} rooms and {players} players.")
+    
+#     # Redirect to a confirmation page or handle the lobby creation process
+#     return redirect(url_for('index'))
 
 @app.route('/create', methods=['POST'])
 def create_lobby():
-    # Retrieve form data
-    rooms = request.form['rooms']
-    players = request.form['players']
-    
-    # You can process these values here and create the lobby
-    print(f"Lobby created with {rooms} rooms and {players} players.")
-    
-    # Redirect to a confirmation page or handle the lobby creation process
-    return redirect(url_for('index'))
+    # Get the JSON data from the request
+    data = request.get_json()
+    rooms = data.get('rooms')
+    players = data.get('players')
+    player_name = data.get('player_name')
+
+    # Simulate lobby creation (store player and lobby info)
+    print(f"Creating lobby with {rooms} rooms and {players} players. First player: {player_name}")
+
+    # For now, just return a success message
+    return jsonify({'message': 'Lobby created successfully', 'player': player_name})
 
 @app.route('/lobby/<code>')
 def lobby(code):

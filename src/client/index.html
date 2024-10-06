@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create or Join Lobby</title>
+    <style>
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
     <h1>Create a New Lobby</h1>
     <!-- Create Lobby Form -->
-    <form action="/create" method="post">
+    <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
         <label for="rooms">Rooms Available (max 10):</label>
         <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
         
@@ -18,11 +21,58 @@
         <button type="submit">Create Lobby</button>
     </form>
 
-    <h1>Join an Existing Lobby</h1>
-    <!-- Join Lobby Form -->
-    <form action="/join" method="post">
-        <input type="text" name="code" placeholder="Enter code" required>
-        <button type="submit">Join Lobby</button>
-    </form>
+    <!-- Popup to ask for player name -->
+    <div id="name-popup" class="hidden">
+        <h2>Enter Your Name</h2>
+        <input type="text" id="player-name" placeholder="Your name" required>
+        <button onclick="submitPlayerName()">Submit</button>
+    </div>
+
+    <!-- Lobby screen to show player names -->
+    <div id="lobby-screen" class="hidden">
+        <h2>Lobby</h2>
+        <ul id="player-list">
+            <li id="slot-1">Waiting for player...</li>
+            <li id="slot-2">Waiting for player...</li>
+            <li id="slot-3">Waiting for player...</li>
+            <li id="slot-4">Waiting for player...</li>
+            <li id="slot-5">Waiting for player...</li>
+            <li id="slot-6">Waiting for player...</li>
+            <li id="slot-7">Waiting for player...</li>
+            <li id="slot-8">Waiting for player...</li>
+            <li id="slot-9">Waiting for player...</li>
+            <li id="slot-10">Waiting for player...</li>
+        </ul>
+    </div>
+
+    <script>
+        function handleCreateLobby(event) {
+            event.preventDefault();
+            document.getElementById("create-lobby-form").classList.add("hidden");
+            document.getElementById("name-popup").classList.remove("hidden");
+        }
+
+        function submitPlayerName() {
+            const playerName = document.getElementById("player-name").value;
+            if (playerName) {
+                document.getElementById("name-popup").classList.add("hidden");
+                document.getElementById("lobby-screen").classList.remove("hidden");
+                document.getElementById("slot-1").innerText = playerName;
+
+                // Send player name and lobby data to backend
+                fetch("/create", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        rooms: document.getElementById("rooms").value,
+                        players: document.getElementById("players").value,
+                        player_name: playerName
+                    })
+                });
+            }
+        }
+    </script>
 </body>
 </html>
