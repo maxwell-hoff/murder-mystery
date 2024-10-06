@@ -58,6 +58,7 @@
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
+        let pollingInterval;  // To hold the interval ID for polling
 
         function handleCreateLobby(event) {
             event.preventDefault();
@@ -97,6 +98,7 @@
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         updatePlayerList(data.player_names);
+                        startPolling();
                     });
                 } else if (currentAction === 'join') {
                     // Send player name and join code to backend (for joining)
@@ -115,6 +117,7 @@
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         updatePlayerList(data.player_names);
+                        startPolling();
                     });
                 }
             }
@@ -125,6 +128,15 @@
             for (let i = 0; i < playerNames.length; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
             }
+        }
+
+        // Function to poll the server every 2 seconds to refresh the player list
+        function startPolling() {
+            pollingInterval = setInterval(() => {
+                fetch(`/lobby/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => updatePlayerList(data.player_names));
+            }, 2000);  // Poll every 2 seconds
         }
     </script>
 </body>

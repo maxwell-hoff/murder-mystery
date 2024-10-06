@@ -48,6 +48,13 @@ def join_lobby():
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/lobby/<lobby_code>', methods=['GET'])
+def get_lobby(lobby_code):
+    if lobby_code in lobbies:
+        return jsonify({'player_names': lobbies[lobby_code]['player_names']})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
