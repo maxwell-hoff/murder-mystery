@@ -51,7 +51,10 @@ def join_lobby():
 @app.route('/lobby/<lobby_code>', methods=['GET'])
 def get_lobby(lobby_code):
     if lobby_code in lobbies:
-        return jsonify({'player_names': lobbies[lobby_code]['player_names']})
+        return jsonify({
+            'player_names': lobbies[lobby_code]['player_names'],
+            'ready_statuses': lobbies[lobby_code]['ready_statuses']
+        })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 

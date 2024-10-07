@@ -121,7 +121,7 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        updatePlayerList(data.player_names);
+                        updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
                 } else if (currentAction === 'join') {
@@ -140,26 +140,27 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        updatePlayerList(data.player_names);
+                        updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
                 }
             }
         }
 
-        // Function to update the player list
-        function updatePlayerList(playerNames) {
+        // Function to update the player list and ready statuses
+        function updatePlayerList(playerNames, readyStatuses) {
             for (let i = 0; i < playerNames.length; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
+                document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
             }
         }
 
-        // Function to poll the server every 2 seconds to refresh the player list
+        // Function to poll the server every 2 seconds to refresh the player list and ready statuses
         function startPolling() {
             pollingInterval = setInterval(() => {
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
-                    .then(data => updatePlayerList(data.player_names));
+                    .then(data => updatePlayerList(data.player_names, data.ready_statuses));
             }, 2000);  // Poll every 2 seconds
         }
 
@@ -173,14 +174,6 @@
                 body: JSON.stringify({
                     player_name: playerName
                 })
-            }).then(() => {
-                // Find the current player's index and update their status to 'Ready'
-                const playerSlots = document.querySelectorAll("tbody td[id^='slot']");
-                playerSlots.forEach((slot, index) => {
-                    if (slot.innerText === playerName) {
-                        document.getElementById(`status-${index + 1}`).innerText = "Ready";
-                    }
-                });
             });
         }
     </script>
