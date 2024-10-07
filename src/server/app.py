@@ -34,7 +34,7 @@ def create_lobby():
 
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
     return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
-
+ 
 @app.route('/join', methods=['POST'])
 def join_lobby():
     data = request.get_json()
