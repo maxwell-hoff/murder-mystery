@@ -41,7 +41,18 @@
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
         <p>Lobby Code: <span id="lobby-code"></span></p>
-        <ul id="player-list"></ul> <!-- Dynamically generated player list -->
+        <ul id="player-list">
+            <li id="slot-1">Waiting for player...</li>
+            <li id="slot-2">Waiting for player...</li>
+            <li id="slot-3">Waiting for player...</li>
+            <li id="slot-4">Waiting for player...</li>
+            <li id="slot-5">Waiting for player...</li>
+            <li id="slot-6">Waiting for player...</li>
+            <li id="slot-7">Waiting for player...</li>
+            <li id="slot-8">Waiting for player...</li>
+            <li id="slot-9">Waiting for player...</li>
+            <li id="slot-10">Waiting for player...</li>
+        </ul>
     </div>
 
     <script>
@@ -86,7 +97,6 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names);
                         startPolling();
                     });
@@ -106,23 +116,10 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names);
                         startPolling();
                     });
                 }
-            }
-        }
-
-        // Function to dynamically generate the correct number of player slots based on max players
-        function generatePlayerList(maxPlayers) {
-            const playerList = document.getElementById("player-list");
-            playerList.innerHTML = '';  // Clear existing list
-            for (let i = 0; i < maxPlayers; i++) {
-                const li = document.createElement("li");
-                li.id = `slot-${i + 1}`;
-                li.innerHTML = `Waiting for player...`;
-                playerList.appendChild(li);
             }
         }
 
