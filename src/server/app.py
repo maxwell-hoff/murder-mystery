@@ -25,15 +25,16 @@ def create_lobby():
     # Generate a lobby code
     lobby_code = generate_lobby_code()
 
-    # Create the lobby
+    # Create the lobby with initialized player names and ready statuses
     lobbies[lobby_code] = {
         'rooms': rooms,
-        'players': players,
-        'player_names': [player_name]
+        'max_players': int(players),
+        'player_names': [player_name],
+        'ready_statuses': [False]  # Initialize ready statuses with False
     }
 
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
-    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
+    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': players})
 
 @app.route('/join', methods=['POST'])
 def join_lobby():
@@ -43,8 +44,25 @@ def join_lobby():
 
     if lobby_code in lobbies:
         lobbies[lobby_code]['player_names'].append(player_name)
+        lobbies[lobby_code]['ready_statuses'].append(False)  # Initialize as not ready
         print(f"Player {player_name} joined lobby {lobby_code}.")
-        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
+        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': lobbies[lobby_code]['max_players']})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/ready/<lobby_code>', methods=['POST'])
+def set_ready_status(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+
+    if lobby_code in lobbies:
+        # Update the ready status for the player
+        for idx, name in enumerate(lobbies[lobby_code]['player_names']):
+            if name == player_name:
+                lobbies[lobby_code]['ready_statuses'][idx] = True
+                print(f"Player {player_name} is ready in lobby {lobby_code}.")
+                break
+        return jsonify({'message': 'Player ready status updated'})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
@@ -53,7 +71,7 @@ def get_lobby(lobby_code):
     if lobby_code in lobbies:
         return jsonify({
             'player_names': lobbies[lobby_code]['player_names'],
-            'ready_statuses': lobbies[lobby_code]['ready_statuses']
+            'ready_statuses': lobbies[lobby_code]['ready_statuses']  # Return ready statuses
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
