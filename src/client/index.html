@@ -61,16 +61,7 @@
                 </tr>
             </thead>
             <tbody id="player-list">
-                <tr><td id="slot-1">Waiting for player...</td><td id="status-1"></td></tr>
-                <tr><td id="slot-2">Waiting for player...</td><td id="status-2"></td></tr>
-                <tr><td id="slot-3">Waiting for player...</td><td id="status-3"></td></tr>
-                <tr><td id="slot-4">Waiting for player...</td><td id="status-4"></td></tr>
-                <tr><td id="slot-5">Waiting for player...</td><td id="status-5"></td></tr>
-                <tr><td id="slot-6">Waiting for player...</td><td id="status-6"></td></tr>
-                <tr><td id="slot-7">Waiting for player...</td><td id="status-7"></td></tr>
-                <tr><td id="slot-8">Waiting for player...</td><td id="status-8"></td></tr>
-                <tr><td id="slot-9">Waiting for player...</td><td id="status-9"></td></tr>
-                <tr><td id="slot-10">Waiting for player...</td><td id="status-10"></td></tr>
+                <!-- Player slots will be generated dynamically -->
             </tbody>
         </table>
 
@@ -121,6 +112,7 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
+                        generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
@@ -140,10 +132,31 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
+                        generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
                 }
+            }
+        }
+
+        // Function to generate the correct number of player slots based on max players
+        function generatePlayerList(maxPlayers) {
+            const playerList = document.getElementById("player-list");
+            playerList.innerHTML = '';  // Clear existing list
+            for (let i = 0; i < maxPlayers; i++) {
+                const row = document.createElement("tr");
+                const playerCell = document.createElement("td");
+                playerCell.id = `slot-${i + 1}`;
+                playerCell.innerText = 'Waiting for player...';
+
+                const statusCell = document.createElement("td");
+                statusCell.id = `status-${i + 1}`;
+                statusCell.innerText = '';
+
+                row.appendChild(playerCell);
+                row.appendChild(statusCell);
+                playerList.appendChild(row);
             }
         }
 

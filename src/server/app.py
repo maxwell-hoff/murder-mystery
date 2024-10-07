@@ -9,7 +9,7 @@ lobbies = {}  # Dictionary to store lobbies
 
 def generate_lobby_code():
     """Generates a unique 6-character lobby code."""
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
 
 @app.route('/')
 def index():
