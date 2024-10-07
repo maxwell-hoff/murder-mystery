@@ -6,7 +6,6 @@
     <title>Create or Join Lobby</title>
     <style>
         .hidden { display: none; }
-        .ready-status { margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -42,16 +41,23 @@
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
         <p>Lobby Code: <span id="lobby-code"></span></p>
-        <ul id="player-list"></ul>
-
-        <!-- Ready button for the current player -->
-        <button id="ready-button" onclick="setReadyStatus()">Ready</button>
+        <ul id="player-list">
+            <li id="slot-1">Waiting for player...</li>
+            <li id="slot-2">Waiting for player...</li>
+            <li id="slot-3">Waiting for player...</li>
+            <li id="slot-4">Waiting for player...</li>
+            <li id="slot-5">Waiting for player...</li>
+            <li id="slot-6">Waiting for player...</li>
+            <li id="slot-7">Waiting for player...</li>
+            <li id="slot-8">Waiting for player...</li>
+            <li id="slot-9">Waiting for player...</li>
+            <li id="slot-10">Waiting for player...</li>
+        </ul>
     </div>
 
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
-        let playerName = '';  // Store the current player's name
         let pollingInterval;  // To hold the interval ID for polling
 
         function handleCreateLobby(event) {
@@ -69,7 +75,7 @@
         }
 
         function submitPlayerName() {
-            playerName = document.getElementById("player-name").value;
+            const playerName = document.getElementById("player-name").value;
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
@@ -91,8 +97,7 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names);
                         startPolling();
                     });
                 } else if (currentAction === 'join') {
@@ -111,57 +116,26 @@
                     .then(data => {
                         lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names);
                         startPolling();
                     });
                 }
             }
         }
 
-        // Function to generate the correct number of player slots
-        function generatePlayerList(maxPlayers) {
-            const playerList = document.getElementById("player-list");
-            playerList.innerHTML = '';  // Clear existing list
-            for (let i = 0; i < maxPlayers; i++) {
-                const li = document.createElement("li");
-                li.id = `slot-${i + 1}`;
-                li.innerHTML = `Waiting for player... <span class="ready-status" id="ready-${i + 1}">Not Ready</span>`;
-                playerList.appendChild(li);
-            }
-        }
-
-        // Function to update the player list and ready statuses
-        function updatePlayerList(playerNames, readyStatuses) {
+        // Function to update the player list
+        function updatePlayerList(playerNames) {
             for (let i = 0; i < playerNames.length; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
-                document.getElementById(`ready-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : 'Not Ready';
             }
         }
 
-        // Function to set the current player's ready status
-        function setReadyStatus() {
-            fetch(`/ready/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(() => {
-                // Update ready status for the current player immediately
-                document.getElementById(`ready-${playerNames.indexOf(playerName) + 1}`).innerText = 'Ready';
-            });
-        }
-
-        // Function to poll the server every 2 seconds to refresh the player list and ready statuses
+        // Function to poll the server every 2 seconds to refresh the player list
         function startPolling() {
             pollingInterval = setInterval(() => {
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
-                    .then(data => updatePlayerList(data.player_names, data.ready_statuses));
+                    .then(data => updatePlayerList(data.player_names));
             }, 2000);  // Poll every 2 seconds
         }
     </script>
