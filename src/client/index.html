@@ -53,11 +53,15 @@
             <li id="slot-9">Waiting for player...</li>
             <li id="slot-10">Waiting for player...</li>
         </ul>
+
+        <!-- Add a Ready button here -->
+        <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
 
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
+        let playerName = '';  // Store the current player's name
         let pollingInterval;  // To hold the interval ID for polling
 
         function handleCreateLobby(event) {
@@ -75,7 +79,7 @@
         }
 
         function submitPlayerName() {
-            const playerName = document.getElementById("player-name").value;
+            playerName = document.getElementById("player-name").value;
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
@@ -137,6 +141,21 @@
                     .then(response => response.json())
                     .then(data => updatePlayerList(data.player_names));
             }, 2000);  // Poll every 2 seconds
+        }
+
+        // Function to send the ready status to the server
+        function setReadyStatus() {
+            fetch(`/ready/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            }).then(() => {
+                alert("You are now ready!");
+            });
         }
     </script>
 </body>
