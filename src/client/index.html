@@ -52,7 +52,6 @@
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
         let playerName = '';  // Store the current player's name
-        let playerIndex = null;  // Store the current player's index in the lobby
         let pollingInterval;  // To hold the interval ID for polling
 
         function handleCreateLobby(event) {
@@ -137,11 +136,6 @@
             for (let i = 0; i < playerNames.length; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
                 document.getElementById(`ready-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : 'Not Ready';
-
-                // Identify the index of the current player
-                if (playerNames[i] === playerName) {
-                    playerIndex = i;
-                }
             }
         }
 
@@ -158,9 +152,7 @@
             })
             .then(() => {
                 // Update ready status for the current player immediately
-                if (playerIndex !== null) {
-                    document.getElementById(`ready-${playerIndex + 1}`).innerText = 'Ready';
-                }
+                document.getElementById(`ready-${playerNames.indexOf(playerName) + 1}`).innerText = 'Ready';
             });
         }
 
