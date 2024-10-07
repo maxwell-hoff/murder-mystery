@@ -41,7 +41,7 @@
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
         <p>Lobby Code: <span id="lobby-code"></span></p>
-        <ul id="player-list"></ul>
+        <ul id="player-list"></ul> <!-- Dynamically generated player list -->
     </div>
 
     <script>
@@ -114,7 +114,7 @@
             }
         }
 
-        // Function to generate the correct number of player slots
+        // Function to dynamically generate the correct number of player slots based on max players
         function generatePlayerList(maxPlayers) {
             const playerList = document.getElementById("player-list");
             playerList.innerHTML = '';  // Clear existing list
