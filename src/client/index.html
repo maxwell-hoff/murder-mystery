@@ -16,6 +16,9 @@
             padding: 8px;
             text-align: left;
         }
+        .error {
+            color: red;
+        }
     </style>
 </head>
 <body>
@@ -38,6 +41,7 @@
             <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
             <button type="submit">Join Lobby</button>
         </form>
+        <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
     </div>
 
     <!-- Popup to ask for player name (used for both create and join) -->
@@ -128,13 +132,25 @@
                             player_name: playerName
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (response.status === 404) {
+                            // Show error message if lobby not found
+                            document.getElementById("error-message").classList.remove("hidden");
+                            document.getElementById("create-join-section").classList.remove("hidden");
+                            document.getElementById("name-popup").classList.add("hidden");
+                        } else {
+                            return response.json();
+                        }
+                    })
                     .then(data => {
-                        lobbyCode = data.lobby_code;
-                        document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
-                        updatePlayerList(data.player_names, data.ready_statuses);
-                        startPolling();
+                        if (data) {
+                            document.getElementById("error-message").classList.add("hidden"); // Hide error message if successful
+                            lobbyCode = data.lobby_code;
+                            document.getElementById("lobby-code").innerText = lobbyCode;
+                            generatePlayerList(data.max_players);
+                            updatePlayerList(data.player_names, data.ready_statuses);
+                            startPolling();
+                        }
                     });
                 }
             }
