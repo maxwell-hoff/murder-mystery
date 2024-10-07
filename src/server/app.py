@@ -19,7 +19,7 @@ def index():
 def create_lobby():
     data = request.get_json()
     rooms = data.get('rooms')
-    players = int(data.get('players'))  # Ensure it's an integer
+    players = data.get('players')
     player_name = data.get('player_name')
 
     # Generate a lobby code
@@ -33,12 +33,7 @@ def create_lobby():
     }
 
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
-    return jsonify({
-        'message': 'Lobby created',
-        'lobby_code': lobby_code,
-        'player_names': lobbies[lobby_code]['player_names'],
-        'max_players': lobbies[lobby_code]['players']
-    })
+    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
 
 @app.route('/join', methods=['POST'])
 def join_lobby():
@@ -47,29 +42,16 @@ def join_lobby():
     player_name = data.get('player_name')
 
     if lobby_code in lobbies:
-        lobby = lobbies[lobby_code]
-        if len(lobby['player_names']) < lobby['players']:
-            lobby['player_names'].append(player_name)
-            print(f"Player {player_name} joined lobby {lobby_code}.")
-            return jsonify({
-                'message': f'Joined lobby {lobby_code}',
-                'lobby_code': lobby_code,
-                'player_names': lobby['player_names'],
-                'max_players': lobby['players']
-            })
-        else:
-            return jsonify({'error': 'Lobby is full'}), 400
+        lobbies[lobby_code]['player_names'].append(player_name)
+        print(f"Player {player_name} joined lobby {lobby_code}.")
+        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names']})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
 @app.route('/lobby/<lobby_code>', methods=['GET'])
 def get_lobby(lobby_code):
     if lobby_code in lobbies:
-        lobby = lobbies[lobby_code]
-        return jsonify({
-            'player_names': lobby['player_names'],
-            'max_players': lobby['players']
-        })
+        return jsonify({'player_names': lobbies[lobby_code]['player_names']})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
