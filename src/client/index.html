@@ -149,6 +149,10 @@
                 body: JSON.stringify({
                     player_name: playerName
                 })
+            })
+            .then(() => {
+                // Update ready status for the current player immediately
+                document.getElementById(`ready-${playerNames.indexOf(playerName) + 1}`).innerText = 'Ready';
             });
         }
 
