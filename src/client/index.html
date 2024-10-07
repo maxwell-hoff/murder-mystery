@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -34,7 +35,6 @@
             
             <button type="submit">Create Lobby</button>
         </form>
-
         <h1>Join an Existing Lobby</h1>
         <!-- Join Lobby Form -->
         <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
@@ -43,19 +43,16 @@
         </form>
         <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
     </div>
-
     <!-- Popup to ask for player name (only shows after valid lobby code is entered) -->
     <div id="name-popup" class="hidden">
         <h2>Enter Your Name</h2>
         <input type="text" id="player-name" placeholder="Your name" required>
         <button onclick="submitPlayerName()">Submit</button>
     </div>
-
     <!-- Lobby screen to show player names and lobby code -->
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
         <p>Lobby Code: <span id="lobby-code"></span></p>
-
         <!-- Add a table for Players and Status -->
         <table>
             <thead>
@@ -68,28 +65,23 @@
                 <!-- Player slots will be generated dynamically -->
             </tbody>
         </table>
-
         <!-- Add a Ready button here -->
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
-
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
         let playerName = '';  // Store the current player's name
         let pollingInterval;  // To hold the interval ID for polling
-
         function handleCreateLobby(event) {
             event.preventDefault();
             currentAction = 'create';
             document.getElementById("create-join-section").classList.add("hidden");
             document.getElementById("name-popup").classList.remove("hidden");
         }
-
         function handleJoinLobby(event) {
             event.preventDefault();
             const lobbyCodeInput = document.getElementById("join-code").value;
-
             // Check if the lobby exists before asking for the player's name
             fetch("/check_lobby", {
                 method: "POST",
@@ -118,13 +110,11 @@
                 }
             });
         }
-
         function submitPlayerName() {
             playerName = document.getElementById("player-name").value;
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
-
                 // Send player name to backend and join lobby
                 fetch("/join", {
                     method: "POST",
@@ -145,7 +135,6 @@
                 });
             }
         }
-
         // Function to generate the correct number of player slots based on max players
         function generatePlayerList(maxPlayers) {
             const playerList = document.getElementById("player-list");
@@ -155,17 +144,14 @@
                 const playerCell = document.createElement("td");
                 playerCell.id = `slot-${i + 1}`;
                 playerCell.innerText = 'Waiting for player...';
-
                 const statusCell = document.createElement("td");
                 statusCell.id = `status-${i + 1}`;
                 statusCell.innerText = '';
-
                 row.appendChild(playerCell);
                 row.appendChild(statusCell);
                 playerList.appendChild(row);
             }
         }
-
         // Function to update the player list and ready statuses
         function updatePlayerList(playerNames, readyStatuses) {
             for (let i = 0; i < playerNames.length; i++) {
@@ -173,7 +159,6 @@
                 document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
             }
         }
-
         // Function to poll the server every 2 seconds to refresh the player list and ready statuses
         function startPolling() {
             pollingInterval = setInterval(() => {
@@ -182,7 +167,6 @@
                     .then(data => updatePlayerList(data.player_names, data.ready_statuses));
             }, 2000);  // Poll every 2 seconds
         }
-
         // Function to send the ready status to the server and update the player's status in the table
         function setReadyStatus() {
             fetch(`/ready/${lobbyCode}`, {
