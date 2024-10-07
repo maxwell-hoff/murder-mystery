@@ -6,6 +6,16 @@
     <title>Create or Join Lobby</title>
     <style>
         .hidden { display: none; }
+        table {
+            width: 50%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
     </style>
 </head>
 <body>
@@ -41,18 +51,28 @@
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
         <p>Lobby Code: <span id="lobby-code"></span></p>
-        <ul id="player-list">
-            <li id="slot-1">Waiting for player...</li>
-            <li id="slot-2">Waiting for player...</li>
-            <li id="slot-3">Waiting for player...</li>
-            <li id="slot-4">Waiting for player...</li>
-            <li id="slot-5">Waiting for player...</li>
-            <li id="slot-6">Waiting for player...</li>
-            <li id="slot-7">Waiting for player...</li>
-            <li id="slot-8">Waiting for player...</li>
-            <li id="slot-9">Waiting for player...</li>
-            <li id="slot-10">Waiting for player...</li>
-        </ul>
+
+        <!-- Add a table for Players and Status -->
+        <table>
+            <thead>
+                <tr>
+                    <th>Players</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="player-list">
+                <tr><td id="slot-1">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-2">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-3">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-4">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-5">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-6">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-7">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-8">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-9">Waiting for player...</td><td></td></tr>
+                <tr><td id="slot-10">Waiting for player...</td><td></td></tr>
+            </tbody>
+        </table>
 
         <!-- Add a Ready button here -->
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
