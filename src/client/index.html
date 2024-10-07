@@ -73,6 +73,11 @@
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
 
+    <!-- New screen after all players are ready -->
+    <div id="all-ready-screen" class="hidden">
+        <h1>Test</h1>
+    </div>
+
     <script>
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
@@ -180,10 +185,19 @@
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
                     .then(data => updatePlayerList(data.player_names, data.ready_statuses));
+
+                // Check if all players are ready
+                fetch(`/check_all_ready/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.all_ready) {
+                            clearInterval(pollingInterval);  // Stop polling
+                            showAllReadyScreen();  // Show the new screen
+                        }
+                    });
             }, 2000);  // Poll every 2 seconds
         }
 
-        // Function to send the ready status to the server and update the player's status in the table
         function setReadyStatus() {
             fetch(`/ready/${lobbyCode}`, {
                 method: "POST",
@@ -194,6 +208,12 @@
                     player_name: playerName
                 })
             });
+        }
+
+        // Function to show the "test" screen after all players are ready
+        function showAllReadyScreen() {
+            document.getElementById("lobby-screen").classList.add("hidden");
+            document.getElementById("all-ready-screen").classList.remove("hidden");
         }
     </script>
 </body>

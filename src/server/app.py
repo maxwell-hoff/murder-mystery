@@ -66,6 +66,17 @@ def set_ready_status(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/check_all_ready/<lobby_code>', methods=['GET'])
+def check_all_ready(lobby_code):
+    if lobby_code in lobbies:
+        # Check if all players are ready
+        if all(lobbies[lobby_code]['ready_statuses']) and len(lobbies[lobby_code]['player_names']) == lobbies[lobby_code]['max_players']:
+            return jsonify({'all_ready': True})
+        else:
+            return jsonify({'all_ready': False})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 @app.route('/lobby/<lobby_code>', methods=['GET'])
 def get_lobby(lobby_code):
     if lobby_code in lobbies:
