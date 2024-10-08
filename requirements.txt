@@ -1,4 +1,4 @@
 flask
 fastapi
-redis
+redis>=4.5.5
 certifi

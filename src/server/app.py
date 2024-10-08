@@ -11,14 +11,16 @@ import certifi  # Make sure to install certifi
 app = Flask(__name__, static_folder='../client')
 lobbies = {}  # Dictionary to store lobbies
 
-# Set up Redis connection
+# Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+if redis_url.startswith('redis://'):
+    redis_url = redis_url.replace('redis://', 'rediss://', 1)
+
 # Create an SSL context using certifi's CA bundle
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 
-r = redis.from_url(
+r = redis.Redis.from_url(
     redis_url,
-    ssl=True,
     ssl_cert_reqs='required',
     ssl_ca_certs=certifi.where(),
     ssl_context=ssl_context
