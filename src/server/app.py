@@ -38,11 +38,29 @@ def join_lobby():
     data = request.get_json()
     lobby_code = data.get('code')
     player_name = data.get('player_name')
+
     if lobby_code in lobbies:
+        # Add the player to the lobby
         lobbies[lobby_code]['player_names'].append(player_name)
         lobbies[lobby_code]['ready_statuses'].append(False)  # Initialize as not ready
         print(f"Player {player_name} joined lobby {lobby_code}.")
-        return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': lobbies[lobby_code]['max_players']})
+        return jsonify({
+            'message': f'Joined lobby {lobby_code}',
+            'lobby_code': lobby_code,
+            'player_names': lobbies[lobby_code]['player_names'],
+            'ready_statuses': lobbies[lobby_code]['ready_statuses'],
+            'max_players': lobbies[lobby_code]['max_players']
+        })
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/lobby/<lobby_code>', methods=['GET'])
+def get_lobby(lobby_code):
+    if lobby_code in lobbies:
+        return jsonify({
+            'player_names': lobbies[lobby_code]['player_names'],
+            'ready_statuses': lobbies[lobby_code]['ready_statuses']
+        })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
@@ -69,16 +87,6 @@ def check_all_ready(lobby_code):
             return jsonify({'all_ready': True})
         else:
             return jsonify({'all_ready': False})
-    else:
-        return jsonify({'error': 'Lobby not found'}), 404
-
-@app.route('/lobby/<lobby_code>', methods=['GET'])
-def get_lobby(lobby_code):
-    if lobby_code in lobbies:
-        return jsonify({
-            'player_names': lobbies[lobby_code]['player_names'],
-            'ready_statuses': lobbies[lobby_code]['ready_statuses']  # Return ready statuses
-        })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
