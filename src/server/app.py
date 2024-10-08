@@ -27,7 +27,13 @@ def create_lobby():
         'ready_statuses': [False]  # Initialize ready statuses with False
     }
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
-    return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': players})
+    return jsonify({
+            'message': 'Lobby created',
+            'lobby_code': lobby_code,
+            'player_names': lobbies[lobby_code]['player_names'],
+            'ready_statuses': lobbies[lobby_code]['ready_statuses'],
+            'max_players': lobbies[lobby_code]['max_players']  # Use the integer value
+        })
 @app.route('/join', methods=['POST'])
 def join_lobby():
     data = request.get_json()

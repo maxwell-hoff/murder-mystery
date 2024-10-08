@@ -69,6 +69,7 @@
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
     <script>
+        let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
         let lobbyCode = '';  // Store the generated lobby code
         let playerName = '';  // Store the current player's name
@@ -131,8 +132,9 @@
                     .then(response => response.json())
                     .then(data => {
                         lobbyCode = data.lobby_code;  // Assign the correct lobby code
+                        maxPlayers = data.max_players; // Add this line
                         document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(data.max_players);
+                        generatePlayerList(maxPlayers);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
@@ -150,8 +152,9 @@
                     })
                     .then(response => response.json())
                     .then(data => {
+                        maxPlayers = data.max_players; // Add this line
                         document.getElementById("lobby-code").innerText = data.lobby_code;
-                        generatePlayerList(data.max_players);
+                        generatePlayerList(maxPlayers);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
@@ -177,8 +180,8 @@
         }
         // Function to update the player list and ready statuses
         function updatePlayerList(playerNames, readyStatuses) {
-            for (let i = 0; i < playerNames.length; i++) {
-                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
+            for (let i = 0; i < maxPlayers; i++) {
+                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i] || 'Waiting for player...';
                 document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
             }
         }
