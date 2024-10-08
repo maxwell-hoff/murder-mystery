@@ -43,7 +43,7 @@
         </form>
         <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
     </div>
-    <!-- Popup to ask for player name (only shows after valid lobby code is entered) -->
+    <!-- Popup to ask for player name (used for both create and join) -->
     <div id="name-popup" class="hidden">
         <h2>Enter Your Name</h2>
         <input type="text" id="player-name" placeholder="Your name" required>
@@ -115,24 +115,47 @@
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
-                // Send player name to backend and join lobby
-                fetch("/join", {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        code: lobbyCode,
-                        player_name: playerName
+                if (currentAction === 'create') {
+                    // Send player name and lobby data to backend (for creating)
+                    fetch("/create", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            rooms: document.getElementById("rooms").value,
+                            players: document.getElementById("players").value,
+                            player_name: playerName
+                        })
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("lobby-code").innerText = data.lobby_code;
-                    generatePlayerList(data.max_players);
-                    updatePlayerList(data.player_names, data.ready_statuses);
-                    startPolling();
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        lobbyCode = data.lobby_code;  // Assign the correct lobby code
+                        document.getElementById("lobby-code").innerText = lobbyCode;
+                        generatePlayerList(data.max_players);
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        startPolling();
+                    });
+                } else if (currentAction === 'join') {
+                    // Send player name and join code to backend (for joining)
+                    fetch("/join", {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            code: lobbyCode,  // Use the correct lobby code here
+                            player_name: playerName
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("lobby-code").innerText = data.lobby_code;
+                        generatePlayerList(data.max_players);
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        startPolling();
+                    });
+                }
             }
         }
         // Function to generate the correct number of player slots based on max players
