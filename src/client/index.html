@@ -69,32 +69,29 @@
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
     <script>
-        let currentAction = '';  // To track if we're creating or joining a lobby
-        let lobbyCode = '';  // Store the generated lobby code
-        let playerName = '';  // Store the current player's name
-        let pollingInterval;  // To hold the interval ID for polling
+        let currentAction = '';
+        let lobbyCode = '';
+        let playerName = '';
+        let pollingInterval;
+    
         function handleCreateLobby(event) {
             event.preventDefault();
             currentAction = 'create';
             document.getElementById("create-join-section").classList.add("hidden");
             document.getElementById("name-popup").classList.remove("hidden");
         }
+    
         function handleJoinLobby(event) {
             event.preventDefault();
             const lobbyCodeInput = document.getElementById("join-code").value;
-            // Check if the lobby exists before asking for the player's name
+    
             fetch("/check_lobby", {
                 method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    code: lobbyCodeInput
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: lobbyCodeInput })
             })
             .then(response => {
                 if (response.status === 404) {
-                    // Show error message if lobby not found
                     document.getElementById("error-message").classList.remove("hidden");
                 } else {
                     return response.json();
@@ -102,26 +99,24 @@
             })
             .then(data => {
                 if (data) {
-                    // If lobby is found, ask for the player's name
                     lobbyCode = lobbyCodeInput;
-                    document.getElementById("error-message").classList.add("hidden"); // Hide error message
+                    document.getElementById("error-message").classList.add("hidden");
                     document.getElementById("create-join-section").classList.add("hidden");
                     document.getElementById("name-popup").classList.remove("hidden");
                 }
             });
         }
+    
         function submitPlayerName() {
             playerName = document.getElementById("player-name").value;
             if (playerName) {
                 document.getElementById("name-popup").classList.add("hidden");
                 document.getElementById("lobby-screen").classList.remove("hidden");
+    
                 if (currentAction === 'create') {
-                    // Send player name and lobby data to backend (for creating)
                     fetch("/create", {
                         method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             rooms: document.getElementById("rooms").value,
                             players: document.getElementById("players").value,
@@ -130,21 +125,18 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        lobbyCode = data.lobby_code;  // Assign the correct lobby code
+                        lobbyCode = data.lobby_code;
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
                     });
                 } else if (currentAction === 'join') {
-                    // Send player name and join code to backend (for joining)
                     fetch("/join", {
                         method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            code: lobbyCode,  // Use the correct lobby code here
+                            code: lobbyCode,
                             player_name: playerName
                         })
                     })
@@ -158,48 +150,46 @@
                 }
             }
         }
-        // Function to generate the correct number of player slots based on max players
+    
         function generatePlayerList(maxPlayers) {
             const playerList = document.getElementById("player-list");
-            playerList.innerHTML = '';  // Clear existing list
+            playerList.innerHTML = '';
             for (let i = 0; i < maxPlayers; i++) {
                 const row = document.createElement("tr");
                 const playerCell = document.createElement("td");
                 playerCell.id = `slot-${i + 1}`;
                 playerCell.innerText = 'Waiting for player...';
+    
                 const statusCell = document.createElement("td");
                 statusCell.id = `status-${i + 1}`;
                 statusCell.innerText = '';
+    
                 row.appendChild(playerCell);
                 row.appendChild(statusCell);
                 playerList.appendChild(row);
             }
         }
-        // Function to update the player list and ready statuses
+    
         function updatePlayerList(playerNames, readyStatuses) {
             for (let i = 0; i < playerNames.length; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
                 document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
             }
         }
-        // Function to poll the server every 2 seconds to refresh the player list and ready statuses
+    
         function startPolling() {
             pollingInterval = setInterval(() => {
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
                     .then(data => updatePlayerList(data.player_names, data.ready_statuses));
-            }, 2000);  // Poll every 2 seconds
+            }, 2000);
         }
-        // Function to send the ready status to the server and update the player's status in the table
+    
         function setReadyStatus() {
             fetch(`/ready/${lobbyCode}`, {
                 method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_name: playerName })
             });
         }
     </script>
