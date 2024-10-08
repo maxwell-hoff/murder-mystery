@@ -74,30 +74,3 @@ def check_lobby():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
-        return jsonify({'message': 'Player ready status updated'})
-    else:
-        return jsonify({'error': 'Lobby not found'}), 404
-
-@app.route('/check_all_ready/<lobby_code>', methods=['GET'])
-def check_all_ready(lobby_code):
-    if lobby_code in lobbies:
-        # Check if all players are ready
-        if all(lobbies[lobby_code]['ready_statuses']) and len(lobbies[lobby_code]['player_names']) == lobbies[lobby_code]['max_players']:
-            return jsonify({'all_ready': True})
-        else:
-            return jsonify({'all_ready': False})
-    else:
-        return jsonify({'error': 'Lobby not found'}), 404
-
-@app.route('/check_lobby', methods=['POST'])
-def check_lobby():
-    data = request.get_json()
-    lobby_code = data.get('code')
-    if lobby_code in lobbies:
-        return jsonify({'message': 'Lobby found'})
-    else:
-        return jsonify({'error': 'Lobby not found'}), 404
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
