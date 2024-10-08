@@ -3,14 +3,18 @@ import os
 import random
 import string
 from flask import Flask, request, jsonify, send_from_directory
+
 app = Flask(__name__, static_folder='../client')
 lobbies = {}  # Dictionary to store lobbies
+
 def generate_lobby_code():
     """Generates a unique 6-character lobby code."""
     return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
+
 @app.route('/create', methods=['POST'])
 def create_lobby():
     data = request.get_json()
@@ -28,6 +32,7 @@ def create_lobby():
     }
     print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
     return jsonify({'message': 'Lobby created', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': players})
+
 @app.route('/join', methods=['POST'])
 def join_lobby():
     data = request.get_json()
@@ -40,20 +45,33 @@ def join_lobby():
         return jsonify({'message': f'Joined lobby {lobby_code}', 'lobby_code': lobby_code, 'player_names': lobbies[lobby_code]['player_names'], 'ready_statuses': lobbies[lobby_code]['ready_statuses'], 'max_players': lobbies[lobby_code]['max_players']})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
+
 @app.route('/ready/<lobby_code>', methods=['POST'])
 def set_ready_status(lobby_code):
     data = request.get_json()
     player_name = data.get('player_name')
+
     if lobby_code in lobbies:
         # Update the ready status for the player
         for idx, name in enumerate(lobbies[lobby_code]['player_names']):
             if name == player_name:
                 lobbies[lobby_code]['ready_statuses'][idx] = True
-                print(f"Player {player_name} is ready in lobby {lobby_code}.")
                 break
         return jsonify({'message': 'Player ready status updated'})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/check_all_ready/<lobby_code>', methods=['GET'])
+def check_all_ready(lobby_code):
+    if lobby_code in lobbies:
+        # Check if all players are ready
+        if all(lobbies[lobby_code]['ready_statuses']) and len(lobbies[lobby_code]['player_names']) == lobbies[lobby_code]['max_players']:
+            return jsonify({'all_ready': True})
+        else:
+            return jsonify({'all_ready': False})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 @app.route('/lobby/<lobby_code>', methods=['GET'])
 def get_lobby(lobby_code):
     if lobby_code in lobbies:
@@ -63,6 +81,7 @@ def get_lobby(lobby_code):
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
+
 @app.route('/check_lobby', methods=['POST'])
 def check_lobby():
     data = request.get_json()
