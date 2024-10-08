@@ -54,6 +54,7 @@ def create_lobby():
 @app.route('/join', methods=['POST'])
 def join_lobby():
     data = request.get_json()
+    print('Join request data:', data)
     lobby_code = data.get('code')
     player_name = data.get('player_name')
     lobby_key = f"lobby:{lobby_code}"

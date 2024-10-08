@@ -83,6 +83,7 @@
         function handleJoinLobby(event) {
             event.preventDefault();
             const lobbyCodeInput = document.getElementById("join-code").value;
+            currentAction = 'join';  // Set current action to 'join'
             // Check if the lobby exists before asking for the player's name
             fetch("/check_lobby", {
                 method: "POST",
@@ -109,6 +110,10 @@
                     document.getElementById("create-join-section").classList.add("hidden");
                     document.getElementById("name-popup").classList.remove("hidden");
                 }
+            })
+            .catch(error => {
+                console.error('Error checking lobby:', error);
+                alert('An error occurred while checking the lobby.');
             });
         }
         function submitPlayerName() {
