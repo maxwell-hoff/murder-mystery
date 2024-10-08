@@ -132,7 +132,7 @@
                     .then(response => response.json())
                     .then(data => {
                         lobbyCode = data.lobby_code;  // Assign the correct lobby code
-                        maxPlayers = data.max_players; // Add this line
+                        maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         generatePlayerList(maxPlayers);
                         updatePlayerList(data.player_names, data.ready_statuses);
@@ -152,7 +152,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        maxPlayers = data.max_players; // Add this line
+                        maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = data.lobby_code;
                         generatePlayerList(maxPlayers);
                         updatePlayerList(data.player_names, data.ready_statuses);
@@ -182,7 +182,8 @@
         function updatePlayerList(playerNames, readyStatuses) {
             for (let i = 0; i < maxPlayers; i++) {
                 document.getElementById(`slot-${i + 1}`).innerText = playerNames[i] || 'Waiting for player...';
-                document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
+                const status = readyStatuses[i];
+                document.getElementById(`status-${i + 1}`).innerText = status === true ? 'Ready' : '';
             }
         }
         // Function to poll the server every 2 seconds to refresh the player list and ready statuses
