@@ -131,6 +131,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
+                        console.log('Create response data:', data);
                         lobbyCode = data.lobby_code;  // Assign the correct lobby code
                         maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = lobbyCode;
@@ -150,13 +151,23 @@
                             player_name: playerName
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw err; });
+                        }
+                        return response.json();
+                    })
                     .then(data => {
+                        console.log('Join response data:', data);
                         maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = data.lobby_code;
                         generatePlayerList(maxPlayers);
                         updatePlayerList(data.player_names, data.ready_statuses);
                         startPolling();
+                    })
+                    .catch(error => {
+                        console.error('Error joining lobby:', error);
+                        alert(error.error || 'An error occurred while joining the lobby.');
                     });
                 }
             }

@@ -1,4 +1,3 @@
-
 import os
 import random
 import string
@@ -7,7 +6,6 @@ import redis
 import json
 
 app = Flask(__name__, static_folder='../client')
-lobbies = {}  # Dictionary to store lobbies
 
 # Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
@@ -61,7 +59,8 @@ def join_lobby():
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
-        lobby_data = json.loads(lobby_data_json)
+        # Decode the bytes to string
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         if len(lobby_data['player_names']) < lobby_data['max_players']:
             lobby_data['player_names'].append(player_name)
             lobby_data['ready_statuses'].append(False)  # Initialize as not ready
@@ -87,7 +86,8 @@ def set_ready_status(lobby_code):
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
-        lobby_data = json.loads(lobby_data_json)
+        # Decode the bytes to string
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         # Update the ready status for the player
         for idx, name in enumerate(lobby_data['player_names']):
             if name == player_name:
@@ -105,7 +105,8 @@ def get_lobby(lobby_code):
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
-        lobby_data = json.loads(lobby_data_json)
+        # Decode the bytes to string
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         return jsonify({
             'player_names': lobby_data['player_names'],
             'ready_statuses': lobby_data['ready_statuses']
