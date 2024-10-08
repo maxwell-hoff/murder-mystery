@@ -88,9 +88,35 @@
 
         function handleJoinLobby(event) {
             event.preventDefault();
-            currentAction = 'join';
-            document.getElementById("create-join-section").classList.add("hidden");
-            document.getElementById("name-popup").classList.remove("hidden");
+            const lobbyCodeInput = document.getElementById("join-code").value;
+
+            // Check if the lobby exists before asking for the player's name
+            fetch("/check_lobby", {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    code: lobbyCodeInput
+                })
+            })
+            .then(response => {
+                if (response.status === 404) {
+                    // Show error message if lobby not found
+                    document.getElementById("error-message").classList.remove("hidden");
+                } else {
+                    return response.json();
+                }
+            })
+            .then(data => {
+                if (data) {
+                    // If lobby is found, ask for the player's name
+                    lobbyCode = lobbyCodeInput;
+                    document.getElementById("error-message").classList.add("hidden"); // Hide error message
+                    document.getElementById("create-join-section").classList.add("hidden");
+                    document.getElementById("name-popup").classList.remove("hidden");
+                }
+            });
         }
 
         function submitPlayerName() {
@@ -114,7 +140,7 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        lobbyCode = data.lobby_code;
+                        lobbyCode = data.lobby_code;  // Assign the correct lobby code
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         generatePlayerList(data.max_players);
                         updatePlayerList(data.player_names, data.ready_statuses);
@@ -128,29 +154,16 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            code: document.getElementById("join-code").value,
+                            code: lobbyCode,  // Use the correct lobby code here
                             player_name: playerName
                         })
                     })
-                    .then(response => {
-                        if (response.status === 404) {
-                            // Show error message if lobby not found
-                            document.getElementById("error-message").classList.remove("hidden");
-                            document.getElementById("create-join-section").classList.remove("hidden");
-                            document.getElementById("name-popup").classList.add("hidden");
-                        } else {
-                            return response.json();
-                        }
-                    })
+                    .then(response => response.json())
                     .then(data => {
-                        if (data) {
-                            document.getElementById("error-message").classList.add("hidden"); // Hide error message if successful
-                            lobbyCode = data.lobby_code;
-                            document.getElementById("lobby-code").innerText = lobbyCode;
-                            generatePlayerList(data.max_players);
-                            updatePlayerList(data.player_names, data.ready_statuses);
-                            startPolling();
-                        }
+                        document.getElementById("lobby-code").innerText = data.lobby_code;
+                        generatePlayerList(data.max_players);
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        startPolling();
                     });
                 }
             }
