@@ -1,139 +1,212 @@
-<script>
-    let currentAction = '';
-    let lobbyCode = '';
-    let playerName = '';
-    let pollingInterval;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create or Join Lobby</title>
+    <style>
+        .hidden { display: none; }
+        table {
+            width: 50%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <div id="create-join-section">
+        <h1>Create a New Lobby</h1>
+        <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+            <label for="rooms">Rooms Available (max 10):</label>
+            <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
+            
+            <label for="players">Number of Players (max 10):</label>
+            <input type="number" id="players" name="players" min="1" max="10" required><br><br>
+            
+            <button type="submit">Create Lobby</button>
+        </form>
 
-    function handleCreateLobby(event) {
-        event.preventDefault();
-        currentAction = 'create';
-        document.getElementById("create-join-section").classList.add("hidden");
-        document.getElementById("name-popup").classList.remove("hidden");
-    }
+        <h1>Join an Existing Lobby</h1>
+        <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
+            <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
+            <button type="submit">Join Lobby</button>
+        </form>
+        <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
+    </div>
 
-    function handleJoinLobby(event) {
-        event.preventDefault();
-        const lobbyCodeInput = document.getElementById("join-code").value;
+    <div id="name-popup" class="hidden">
+        <h2>Enter Your Name</h2>
+        <input type="text" id="player-name" placeholder="Your name" required>
+        <button onclick="submitPlayerName()">Submit</button>
+    </div>
 
-        fetch("/check_lobby", {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ code: lobbyCodeInput })
-        })
-        .then(response => {
-            if (response.status === 404) {
-                document.getElementById("error-message").classList.remove("hidden");
-            } else {
-                return response.json();
-            }
-        })
-        .then(data => {
-            if (data) {
-                lobbyCode = lobbyCodeInput;
-                document.getElementById("error-message").classList.add("hidden");
-                document.getElementById("create-join-section").classList.add("hidden");
-                document.getElementById("name-popup").classList.remove("hidden");
-            }
-        });
-    }
+    <div id="lobby-screen" class="hidden">
+        <h2>Lobby</h2>
+        <p>Lobby Code: <span id="lobby-code"></span></p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Players</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="player-list">
+            </tbody>
+        </table>
+        <button id="ready-button" onclick="setReadyStatus()">Ready</button>
+    </div>
 
-    function submitPlayerName() {
-        playerName = document.getElementById("player-name").value;
-        if (playerName) {
-            document.getElementById("name-popup").classList.add("hidden");
-            document.getElementById("lobby-screen").classList.remove("hidden");
+    <!-- New screen after all players are ready -->
+    <div id="all-ready-screen" class="hidden">
+        <h1>Test</h1>
+    </div>
 
-            if (currentAction === 'create') {
-                fetch("/create", {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rooms: document.getElementById("rooms").value,
-                        players: document.getElementById("players").value,
-                        player_name: playerName
+    <script>
+        let currentAction = '';
+        let lobbyCode = '';
+        let playerName = '';
+        let pollingInterval;
+    
+        function handleCreateLobby(event) {
+            event.preventDefault();
+            currentAction = 'create';
+            document.getElementById("create-join-section").classList.add("hidden");
+            document.getElementById("name-popup").classList.remove("hidden");
+        }
+    
+        function handleJoinLobby(event) {
+            event.preventDefault();
+            const lobbyCodeInput = document.getElementById("join-code").value;
+    
+            fetch("/check_lobby", {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: lobbyCodeInput })
+            })
+            .then(response => {
+                if (response.status === 404) {
+                    document.getElementById("error-message").classList.remove("hidden");
+                } else {
+                    return response.json();
+                }
+            })
+            .then(data => {
+                if (data) {
+                    lobbyCode = lobbyCodeInput;
+                    document.getElementById("error-message").classList.add("hidden");
+                    document.getElementById("create-join-section").classList.add("hidden");
+                    document.getElementById("name-popup").classList.remove("hidden");
+                }
+            });
+        }
+    
+        function submitPlayerName() {
+            playerName = document.getElementById("player-name").value;
+            if (playerName) {
+                document.getElementById("name-popup").classList.add("hidden");
+                document.getElementById("lobby-screen").classList.remove("hidden");
+    
+                if (currentAction === 'create') {
+                    fetch("/create", {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            rooms: document.getElementById("rooms").value,
+                            players: document.getElementById("players").value,
+                            player_name: playerName
+                        })
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    lobbyCode = data.lobby_code;
-                    document.getElementById("lobby-code").innerText = lobbyCode;
-                    generatePlayerList(data.max_players);
-                    updatePlayerList(data.player_names, data.ready_statuses);
-                    startPolling();  // Start polling after creating the lobby
-                });
-            } else if (currentAction === 'join') {
-                fetch("/join", {
-                    method: "POST",
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        code: lobbyCode,
-                        player_name: playerName
+                    .then(response => response.json())
+                    .then(data => {
+                        lobbyCode = data.lobby_code;
+                        document.getElementById("lobby-code").innerText = lobbyCode;
+                        generatePlayerList(data.max_players);
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        startPolling();  // Start polling after creating the lobby
+                    });
+                } else if (currentAction === 'join') {
+                    fetch("/join", {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            code: lobbyCode,
+                            player_name: playerName
+                        })
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("lobby-code").innerText = data.lobby_code;
-                    generatePlayerList(data.max_players);
-                    updatePlayerList(data.player_names, data.ready_statuses);
-                    startPolling();  // Start polling after joining the lobby
-                });
+                    .then(response => response.json())
+                    .then(data => {
+                        document.getElementById("lobby-code").innerText = data.lobby_code;
+                        generatePlayerList(data.max_players);
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        startPolling();  // Start polling after joining the lobby
+                    });
+                }
             }
         }
-    }
-
-    function generatePlayerList(maxPlayers) {
-        const playerList = document.getElementById("player-list");
-        playerList.innerHTML = '';
-        for (let i = 0; i < maxPlayers; i++) {
-            const row = document.createElement("tr");
-            const playerCell = document.createElement("td");
-            playerCell.id = `slot-${i + 1}`;
-            playerCell.innerText = 'Waiting for player...';
-
-            const statusCell = document.createElement("td");
-            statusCell.id = `status-${i + 1}`;
-            statusCell.innerText = '';
-
-            row.appendChild(playerCell);
-            row.appendChild(statusCell);
-            playerList.appendChild(row);
+    
+        function generatePlayerList(maxPlayers) {
+            const playerList = document.getElementById("player-list");
+            playerList.innerHTML = '';
+            for (let i = 0; i < maxPlayers; i++) {
+                const row = document.createElement("tr");
+                const playerCell = document.createElement("td");
+                playerCell.id = `slot-${i + 1}`;
+                playerCell.innerText = 'Waiting for player...';
+    
+                const statusCell = document.createElement("td");
+                statusCell.id = `status-${i + 1}`;
+                statusCell.innerText = '';
+    
+                row.appendChild(playerCell);
+                row.appendChild(statusCell);
+                playerList.appendChild(row);
+            }
         }
-    }
-
-    function updatePlayerList(playerNames, readyStatuses) {
-        for (let i = 0; i < playerNames.length; i++) {
-            document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
-            document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
+    
+        function updatePlayerList(playerNames, readyStatuses) {
+            for (let i = 0; i < playerNames.length; i++) {
+                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i];
+                document.getElementById(`status-${i + 1}`).innerText = readyStatuses[i] ? 'Ready' : '';
+            }
         }
-    }
-
-    function startPolling() {
-        pollingInterval = setInterval(() => {
-            fetch(`/lobby/${lobbyCode}`)
-                .then(response => response.json())
-                .then(data => updatePlayerList(data.player_names, data.ready_statuses));
-
-            fetch(`/check_all_ready/${lobbyCode}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.all_ready) {
-                        clearInterval(pollingInterval);
-                        showAllReadyScreen();
-                    }
-                });
-        }, 2000);
-    }
-
-    function setReadyStatus() {
-        fetch(`/ready/${lobbyCode}`, {
-            method: "POST",
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ player_name: playerName })
-        });
-    }
-
-    function showAllReadyScreen() {
-        document.getElementById("lobby-screen").classList.add("hidden");
-        document.getElementById("all-ready-screen").classList.remove("hidden");
-    }
-</script>
+    
+        function startPolling() {
+            pollingInterval = setInterval(() => {
+                fetch(`/lobby/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => updatePlayerList(data.player_names, data.ready_statuses));
+    
+                fetch(`/check_all_ready/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.all_ready) {
+                            clearInterval(pollingInterval);
+                            showAllReadyScreen();
+                        }
+                    });
+            }, 2000);
+        }
+    
+        function setReadyStatus() {
+            fetch(`/ready/${lobbyCode}`, {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_name: playerName })
+            });
+        }
+    
+        function showAllReadyScreen() {
+            document.getElementById("lobby-screen").classList.add("hidden");
+            document.getElementById("all-ready-screen").classList.remove("hidden");
+        }
+    </script>
+</body>
+</html
