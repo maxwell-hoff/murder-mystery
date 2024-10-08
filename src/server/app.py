@@ -16,7 +16,6 @@ if redis_url.startswith('redis://'):
 
 r = redis.Redis.from_url(
     redis_url,
-    ssl=True,
     ssl_cert_reqs=None
 )
 
