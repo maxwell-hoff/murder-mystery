@@ -5,8 +5,6 @@ import string
 from flask import Flask, request, jsonify, send_from_directory
 import redis
 import json
-import ssl
-import certifi  # Make sure to install certifi
 
 app = Flask(__name__, static_folder='../client')
 lobbies = {}  # Dictionary to store lobbies
@@ -18,8 +16,8 @@ if redis_url.startswith('redis://'):
 
 r = redis.Redis.from_url(
     redis_url,
-    ssl_cert_reqs='required',
-    ssl_ca_certs=certifi.where()
+    ssl=True,
+    ssl_cert_reqs=None
 )
 
 def generate_lobby_code():
