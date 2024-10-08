@@ -1,11 +1,16 @@
+
 import os
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-# Global dictionary to store lobby data
-lobbies = {}
-
+import random
+import string
+from flask import Flask, request, jsonify, send_from_directory
+app = Flask(__name__, static_folder='../client')
+lobbies = {}  # Dictionary to store lobbies
+def generate_lobby_code():
+    """Generates a unique 6-character lobby code."""
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+@app.route('/')
+def index():
+    return send_from_directory(app.static_folder, 'index.html')
 # Route to check if a lobby exists
 @app.route('/check_lobby', methods=['POST'])
 def check_lobby():
@@ -92,8 +97,6 @@ def set_ready_status(lobby_code):
         return jsonify({'message': 'Player ready status updated'})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
-
-# Start the Flask app
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
