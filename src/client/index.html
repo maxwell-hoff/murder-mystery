@@ -68,6 +68,11 @@
         <!-- Add a Ready button here -->
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
+    <!-- Game screen -->
+    <div id="game-screen" class="hidden">
+        <h1>Test</h1>
+        <!-- Future game content goes here -->
+    </div>
     <script>
         let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
@@ -207,7 +212,16 @@
             pollingInterval = setInterval(() => {
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
-                    .then(data => updatePlayerList(data.player_names, data.ready_statuses));
+                    .then(data => {
+                        updatePlayerList(data.player_names, data.ready_statuses);
+                        // Check if the game has started
+                        if (data.game_started) {
+                            clearInterval(pollingInterval);
+                            // Hide the lobby screen and show the game screen
+                            document.getElementById("lobby-screen").classList.add("hidden");
+                            document.getElementById("game-screen").classList.remove("hidden");
+                        }
+                    });
             }, 2000);  // Poll every 2 seconds
         }
         // Function to send the ready status to the server and update the player's status in the table
@@ -220,6 +234,10 @@
                 body: JSON.stringify({
                     player_name: playerName
                 })
+            })
+            .then(() => {
+                // Disable the Ready button
+                document.getElementById("ready-button").disabled = true;
             });
         }
     </script>

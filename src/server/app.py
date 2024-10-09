@@ -35,10 +35,11 @@ def create_lobby():
     lobby_code = generate_lobby_code()
     # Create the lobby data
     lobby_data = {
-        'rooms': rooms,
-        'max_players': int(players),
-        'player_names': [player_name],
-        'ready_statuses': [False]  # Initialize ready statuses with False
+    'rooms': rooms,
+    'max_players': int(players),
+    'player_names': [player_name],
+    'ready_statuses': [False],  # Initialize ready statuses with False
+    'game_started': False       # New flag to indicate if the game has started
     }
     # Store the lobby data in Redis
     r.set(f"lobby:{lobby_code}", json.dumps(lobby_data))
@@ -62,6 +63,8 @@ def join_lobby():
     if lobby_data_json:
         # Decode the bytes to string
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+        if lobby_data.get('game_started'):
+            return jsonify({'error': 'Game has already started'}), 400
         if len(lobby_data['player_names']) < lobby_data['max_players']:
             lobby_data['player_names'].append(player_name)
             lobby_data['ready_statuses'].append(False)  # Initialize as not ready
@@ -95,6 +98,10 @@ def set_ready_status(lobby_code):
                 lobby_data['ready_statuses'][idx] = True
                 print(f"Player {player_name} is ready in lobby {lobby_code}.")
                 break
+        # Check if all players are ready
+        if all(lobby_data['ready_statuses']) and len(lobby_data['player_names']) == lobby_data['max_players']:
+            lobby_data['game_started'] = True
+            print(f"All players are ready. Game starting in lobby {lobby_code}.")
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
         return jsonify({'message': 'Player ready status updated'})
@@ -110,7 +117,8 @@ def get_lobby(lobby_code):
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         return jsonify({
             'player_names': lobby_data['player_names'],
-            'ready_statuses': lobby_data['ready_statuses']
+            'ready_statuses': lobby_data['ready_statuses'],
+            'game_started': lobby_data['game_started']  # Include game_started
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
