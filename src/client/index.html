@@ -105,6 +105,8 @@
     <!-- Game screen -->
     <div id="game-screen" class="hidden">
         <h1>Game Screen</h1>
+        <!-- Display the Timer -->
+        <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
         <!-- Reveal/Hide Role Button -->
         <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
         <!-- Placeholder for displaying the role -->
@@ -126,6 +128,25 @@
         </form>
     </div>
 
+    <!-- Create Lobby Form -->
+    <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+        <label for="rooms">Rooms Available (max 10):</label>
+        <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
+        
+        <label for="players">Number of Players (max 10):</label>
+        <input type="number" id="players" name="players" min="1" max="10" required><br><br>
+
+        <!-- Add Game Duration Dropdown -->
+        <label for="duration">Game Duration (minutes):</label>
+        <select id="duration" name="duration" required>
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="60">60</option>
+        </select><br><br>
+        
+        <button type="submit">Create Lobby</button>
+    </form>
+
     <script>
         let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
@@ -137,6 +158,10 @@
         let roomNames = []; // To store the room names
         let roomRevealed = false;  // Track whether the room is currently revealed
         let playerRoom = '';       // Store the player's assigned room
+        let gameDuration = 0; // Store the game duration
+        let timerInterval;   // To hold the interval ID for the timer
+        let gameStartTime;   // Store the game start time
+        let gameDurationMs;  // Store the game duration in milliseconds
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -219,6 +244,8 @@
             document.getElementById('create-lobby-section').classList.add('hidden');
             // Get the number of rooms
             const numRooms = parseInt(document.getElementById('rooms').value);
+            // Get the game duration
+            gameDuration = parseInt(document.getElementById('duration').value);
             // Generate room input fields
             generateRoomInputs(numRooms);
             // Show the room names section
@@ -314,7 +341,8 @@
                         body: JSON.stringify({
                             rooms: roomNames,  // Send the room names array
                             players: document.getElementById("players").value,
-                            player_name: playerName
+                            player_name: playerName,
+                            duration: gameDuration  // Include game duration
                         })
                     })
                     .then(response => response.json())
@@ -405,6 +433,12 @@
                             fetchPlayerRole();
                             // Fetch the player's room
                             fetchPlayerRoom();
+                            // Get the game duration from the backend (for joiners)
+                            gameDuration = data.duration;
+                            // Get the game start time from the backend
+                            gameStartTime = data.game_start_time;
+                            // Start the game timer
+                            startGameTimer();
                         }
                     });
             }, 2000);  // Poll every 2 seconds
@@ -480,6 +514,42 @@
             document.getElementById('room-display').classList.add('hidden');
             document.getElementById('toggle-room-button').innerText = 'Reveal Room';
             roomRevealed = false;
+        }
+
+        function startGameTimer() {
+            // Calculate the end time
+            const durationMinutes = gameDuration; // Duration in minutes from the lobby data
+            gameDurationMs = durationMinutes * 60 * 1000; // Convert minutes to milliseconds
+            gameStartTime = Date.now();
+
+            updateTimerDisplay(); // Initial display update
+
+            timerInterval = setInterval(() => {
+                updateTimerDisplay();
+            }, 10); // Update every 10 milliseconds (centiseconds)
+        }
+
+        function updateTimerDisplay() {
+            const elapsedTime = Date.now() - gameStartTime;
+            const remainingTime = gameDurationMs - elapsedTime;
+
+            if (remainingTime <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('timer-display').innerText = '00:00:00';
+                // Handle game over logic here if needed
+                return;
+            }
+
+            const minutes = Math.floor(remainingTime / 60000);
+            const seconds = Math.floor((remainingTime % 60000) / 1000);
+            const centiseconds = Math.floor((remainingTime % 1000) / 10);
+
+            // Format the time components to always have two digits
+            const formattedMinutes = String(minutes).padStart(2, '0');
+            const formattedSeconds = String(seconds).padStart(2, '0');
+            const formattedCentiseconds = String(centiseconds).padStart(2, '0');
+
+            document.getElementById('timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
         }
     </script>
 </body>

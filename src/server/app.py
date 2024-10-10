@@ -5,6 +5,7 @@ from flask import Flask, request, jsonify, send_from_directory
 import redis
 import json
 import game_logic
+import time
 
 app = Flask(__name__, static_folder='../client')
 
@@ -32,6 +33,8 @@ def create_lobby():
     rooms = data.get('rooms')  # Now expecting a list of room names
     players = data.get('players')
     player_name = data.get('player_name')
+    duration = data.get('duration')  # Get the game duration
+
     # Generate a lobby code
     lobby_code = generate_lobby_code()
     # Create the lobby data
@@ -40,11 +43,13 @@ def create_lobby():
         'max_players': int(players),
         'player_names': [player_name],
         'ready_statuses': [False],  # Initialize ready statuses with False
-        'game_started': False       # New flag to indicate if the game has started
+        'game_started': False,      # New flag to indicate if the game has started
+        'duration': int(duration),  # Store the game duration in minutes
+        'game_start_time': None     # Will store the game start timestamp
     }
     # Store the lobby data in Redis
     r.set(f"lobby:{lobby_code}", json.dumps(lobby_data))
-    print(f"Lobby {lobby_code} created with rooms {rooms} and {players} players. First player: {player_name}")
+    print(f"Lobby {lobby_code} created with rooms {rooms}, {players} players, and duration {duration} minutes. First player: {player_name}")
     return jsonify({
         'message': 'Lobby created',
         'lobby_code': lobby_code,
@@ -110,8 +115,12 @@ def set_ready_status(lobby_code):
             room_assignments = game_logic.assign_rooms(lobby_data['player_names'], rooms)
             lobby_data['room_assignments'] = room_assignments  # Store room assignments
 
+            # Record the game start time in milliseconds since epoch
+            lobby_data['game_start_time'] = int(round(time.time() * 1000))
+
             lobby_data['game_started'] = True
             print(f"All players are ready. Game starting in lobby {lobby_code}. Roles and rooms assigned.")
+
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
         return jsonify({'message': 'Player ready status updated'})
@@ -128,7 +137,9 @@ def get_lobby(lobby_code):
         return jsonify({
             'player_names': lobby_data['player_names'],
             'ready_statuses': lobby_data['ready_statuses'],
-            'game_started': lobby_data['game_started']  # Include game_started
+            'game_started': lobby_data['game_started'],   # Include game_started
+            'duration': lobby_data.get('duration'),       # Include game duration
+            'game_start_time': lobby_data.get('game_start_time')  # Include game start time
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
