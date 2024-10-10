@@ -5,7 +5,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create or Join Lobby</title>
+    <title>Murder Mystery Game</title>
     <style>
+        .hidden { display: none; }
+        /* Additional styling for the initial screen */
+        #initial-screen {
+            text-align: center;
+            margin-top: 50px;
+        }
+        #initial-screen h1 {
+            font-size: 48px;
+            margin-bottom: 40px;
+        }
+        #initial-screen button {
+            font-size: 24px;
+            padding: 10px 20px;
+            margin: 10px;
+        }
         .hidden { display: none; }
         table {
             width: 50%;
@@ -23,32 +39,49 @@
     </style>
 </head>
 <body>
-    <div id="create-join-section">
-        <h1>Create a New Lobby</h1>
-        <!-- Create Lobby Form -->
-        <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
-            <label for="rooms">Rooms Available (max 10):</label>
-            <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
-            
-            <label for="players">Number of Players (max 10):</label>
-            <input type="number" id="players" name="players" min="1" max="10" required><br><br>
-            
-            <button type="submit">Create Lobby</button>
-        </form>
-        <h1>Join an Existing Lobby</h1>
-        <!-- Join Lobby Form -->
-        <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
-            <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
-            <button type="submit">Join Lobby</button>
-        </form>
-        <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
+    <!-- Initial Screen -->
+    <div id="initial-screen">
+        <h1>Murder Mystery</h1>
+        <button onclick="showCreateLobby()">Start a Game</button>
+        <button onclick="showJoinLobby()">Join Game</button>
     </div>
+
+    <!-- Create/Join Section (initially hidden) -->
+    <div id="create-join-section" class="hidden">
+        <!-- Create Lobby Section (initially hidden) -->
+        <div id="create-lobby-section" class="hidden">
+            <h1>Create a New Lobby</h1>
+            <!-- Create Lobby Form -->
+            <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+                <label for="rooms">Rooms Available (max 10):</label>
+                <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
+                
+                <label for="players">Number of Players (max 10):</label>
+                <input type="number" id="players" name="players" min="1" max="10" required><br><br>
+                
+                <button type="submit">Create Lobby</button>
+            </form>
+        </div>
+
+        <!-- Join Lobby Section (initially hidden) -->
+        <div id="join-lobby-section" class="hidden">
+            <h1>Join an Existing Lobby</h1>
+            <!-- Join Lobby Form -->
+            <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
+                <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
+                <button type="submit">Join Lobby</button>
+            </form>
+            <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
+        </div>
+    </div>
+
     <!-- Popup to ask for player name (used for both create and join) -->
     <div id="name-popup" class="hidden">
         <h2>Enter Your Name</h2>
         <input type="text" id="player-name" placeholder="Your name" required>
         <button onclick="submitPlayerName()">Submit</button>
     </div>
+
     <!-- Lobby screen to show player names and lobby code -->
     <div id="lobby-screen" class="hidden">
         <h2>Lobby</h2>
@@ -68,6 +101,7 @@
         <!-- Add a Ready button here -->
         <button id="ready-button" onclick="setReadyStatus()">Ready</button>
     </div>
+
     <!-- Game screen -->
     <div id="game-screen" class="hidden">
         <h1>Game Screen</h1>
@@ -76,6 +110,7 @@
         <!-- Placeholder for displaying the role -->
         <p id="role-display" class="hidden"></p>
     </div>
+
     <script>
         let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
@@ -139,12 +174,35 @@
             document.getElementById('toggle-role-button').innerText = 'Reveal Role';
             roleRevealed = false;
         }
+
+        function showCreateLobby() {
+            // Hide the initial screen
+            document.getElementById('initial-screen').classList.add('hidden');
+            // Show the create lobby section
+            document.getElementById('create-join-section').classList.remove('hidden');
+            document.getElementById('create-lobby-section').classList.remove('hidden');
+            document.getElementById('join-lobby-section').classList.add('hidden');
+        }
+
+        function showJoinLobby() {
+            // Hide the initial screen
+            document.getElementById('initial-screen').classList.add('hidden');
+            // Show the join lobby section
+            document.getElementById('create-join-section').classList.remove('hidden');
+            document.getElementById('join-lobby-section').classList.remove('hidden');
+            document.getElementById('create-lobby-section').classList.add('hidden');
+        }
+
+        // Modify handleCreateLobby and handleJoinLobby to not hide the create-join-section immediately
         function handleCreateLobby(event) {
             event.preventDefault();
             currentAction = 'create';
-            document.getElementById("create-join-section").classList.add("hidden");
+            // Hide the create lobby section
+            document.getElementById('create-lobby-section').classList.add('hidden');
+            // Proceed to ask for player name
             document.getElementById("name-popup").classList.remove("hidden");
         }
+
         function handleJoinLobby(event) {
             event.preventDefault();
             const lobbyCodeInput = document.getElementById("join-code").value;
@@ -172,7 +230,8 @@
                     // If lobby is found, ask for the player's name
                     lobbyCode = lobbyCodeInput;
                     document.getElementById("error-message").classList.add("hidden"); // Hide error message
-                    document.getElementById("create-join-section").classList.add("hidden");
+                    // Hide the join lobby section
+                    document.getElementById('join-lobby-section').classList.add('hidden');
                     document.getElementById("name-popup").classList.remove("hidden");
                 }
             })
@@ -181,6 +240,7 @@
                 alert('An error occurred while checking the lobby.');
             });
         }
+        
         function submitPlayerName() {
             playerName = document.getElementById("player-name").value;
             if (playerName) {
