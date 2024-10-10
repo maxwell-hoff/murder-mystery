@@ -438,7 +438,7 @@
                                 // Get the game duration from the backend (for joiners)
                                 gameDuration = data.duration;
                                 // Get the game start time from the backend
-                                gameStartTime = data.game_start_time;
+                                gameStartTime = parseInt(data.game_start_time);
                                 // Start the game timer
                                 startGameTimer();
                             }
@@ -538,6 +538,13 @@
         }
 
         function startGameTimer() {
+            // Ensure gameStartTime is a number
+            gameStartTime = parseInt(gameStartTime);
+
+            // Calculate the game duration in milliseconds
+            const durationMinutes = gameDuration; // Duration in minutes from the lobby data
+            gameDurationMs = durationMinutes * 60 * 1000; // Convert minutes to milliseconds
+
             updateTimerDisplay(); // Initial display update
 
             timerInterval = setInterval(() => {
@@ -563,6 +570,10 @@
 
         // Function to start the meeting timer
         function startMeetingTimer() {
+            // Ensure meetingStartTime is a number
+            meetingStartTime = parseInt(meetingStartTime);
+
+            // Do not recalculate meetingDurationMs here if it's already set globally
             // Show the meeting timer section
             document.getElementById('meeting-timer-section').classList.remove('hidden');
 
@@ -618,7 +629,7 @@
                     // Pause the game timer
                     pauseGameTimer();
                     // Set the meeting start time
-                    meetingStartTime = data.meeting_start_time;
+                    meetingStartTime = parseInt(meetingStartTime);
                     // Start the meeting timer
                     startMeetingTimer();
                     isMeetingActive = true;
