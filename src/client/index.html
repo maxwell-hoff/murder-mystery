@@ -111,6 +111,16 @@
         <p id="role-display" class="hidden"></p>
     </div>
 
+    <!-- Room Names Section (initially hidden) -->
+    <div id="room-names-section" class="hidden">
+        <h2>Name Your Rooms</h2>
+        <form id="room-names-form" onsubmit="handleRoomNames(event)">
+            <!-- Room inputs will be generated dynamically -->
+            <div id="room-inputs"></div>
+            <button type="submit">Next</button>
+        </form>
+    </div>
+
     <script>
         let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
@@ -119,6 +129,7 @@
         let pollingInterval;  // To hold the interval ID for polling
         let roleRevealed = false;  // Track whether the role is currently revealed
         let playerRole = '';       // Store the player's role
+        let roomNames = []; // To store the room names
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -199,6 +210,46 @@
             currentAction = 'create';
             // Hide the create lobby section
             document.getElementById('create-lobby-section').classList.add('hidden');
+            // Get the number of rooms
+            const numRooms = parseInt(document.getElementById('rooms').value);
+            // Generate room input fields
+            generateRoomInputs(numRooms);
+            // Show the room names section
+            document.getElementById('room-names-section').classList.remove('hidden');
+        }
+
+        // Function to generate room input fields
+        function generateRoomInputs(numRooms) {
+            const roomInputsDiv = document.getElementById('room-inputs');
+            roomInputsDiv.innerHTML = '';  // Clear any existing inputs
+            for (let i = 1; i <= numRooms; i++) {
+                const inputDiv = document.createElement('div');
+                const label = document.createElement('label');
+                label.setAttribute('for', `room-${i}`);
+                label.innerText = `Room ${i}: `;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.id = `room-${i}`;
+                input.name = `room-${i}`;
+                input.value = `room ${i}`;  // Default value
+                inputDiv.appendChild(label);
+                inputDiv.appendChild(input);
+                roomInputsDiv.appendChild(inputDiv);
+            }
+        }
+
+        // Function to handle room names submission
+        function handleRoomNames(event) {
+            event.preventDefault();
+            // Collect room names from inputs
+            const roomInputsDiv = document.getElementById('room-inputs');
+            const inputs = roomInputsDiv.getElementsByTagName('input');
+            roomNames = [];
+            for (let input of inputs) {
+                roomNames.push(input.value.trim());
+            }
+            // Hide the room names section
+            document.getElementById('room-names-section').classList.add('hidden');
             // Proceed to ask for player name
             document.getElementById("name-popup").classList.remove("hidden");
         }
@@ -254,7 +305,7 @@
                             'Content-Type': 'application/json',
                         },
                         body: JSON.stringify({
-                            rooms: document.getElementById("rooms").value,
+                            rooms: roomNames,  // Send the room names array
                             players: document.getElementById("players").value,
                             player_name: playerName
                         })
@@ -302,6 +353,7 @@
                 }
             }
         }
+
         // Function to generate the correct number of player slots based on max players
         function generatePlayerList(maxPlayers) {
             const playerList = document.getElementById("player-list");

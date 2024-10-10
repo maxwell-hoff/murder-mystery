@@ -29,22 +29,22 @@ def index():
 @app.route('/create', methods=['POST'])
 def create_lobby():
     data = request.get_json()
-    rooms = data.get('rooms')
+    rooms = data.get('rooms')  # Now expecting a list of room names
     players = data.get('players')
     player_name = data.get('player_name')
     # Generate a lobby code
     lobby_code = generate_lobby_code()
     # Create the lobby data
     lobby_data = {
-    'rooms': rooms,
-    'max_players': int(players),
-    'player_names': [player_name],
-    'ready_statuses': [False],  # Initialize ready statuses with False
-    'game_started': False       # New flag to indicate if the game has started
+        'rooms': rooms,  # Store the room names list
+        'max_players': int(players),
+        'player_names': [player_name],
+        'ready_statuses': [False],  # Initialize ready statuses with False
+        'game_started': False       # New flag to indicate if the game has started
     }
     # Store the lobby data in Redis
     r.set(f"lobby:{lobby_code}", json.dumps(lobby_data))
-    print(f"Lobby {lobby_code} created with {rooms} rooms and {players} players. First player: {player_name}")
+    print(f"Lobby {lobby_code} created with rooms {rooms} and {players} players. First player: {player_name}")
     return jsonify({
         'message': 'Lobby created',
         'lobby_code': lobby_code,
