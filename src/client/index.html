@@ -109,6 +109,11 @@
         <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
         <!-- Placeholder for displaying the role -->
         <p id="role-display" class="hidden"></p>
+
+        <!-- Room Assignment Section -->
+        <h2>Room Assignment:</h2>
+        <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
+        <p id="room-display" class="hidden"></p>
     </div>
 
     <!-- Room Names Section (initially hidden) -->
@@ -130,6 +135,8 @@
         let roleRevealed = false;  // Track whether the role is currently revealed
         let playerRole = '';       // Store the player's role
         let roomNames = []; // To store the room names
+        let roomRevealed = false;  // Track whether the room is currently revealed
+        let playerRoom = '';       // Store the player's assigned room
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -371,6 +378,7 @@
                 playerList.appendChild(row);
             }
         }
+
         // Function to update the player list and ready statuses
         function updatePlayerList(playerNames, readyStatuses) {
             for (let i = 0; i < maxPlayers; i++) {
@@ -379,6 +387,7 @@
                 document.getElementById(`status-${i + 1}`).innerText = status === true ? 'Ready' : '';
             }
         }
+
         // Function to poll the server every 2 seconds to refresh the player list and ready statuses
         function startPolling() {
             pollingInterval = setInterval(() => {
@@ -394,10 +403,13 @@
                             document.getElementById("game-screen").classList.remove("hidden");
                             // Fetch the player's role
                             fetchPlayerRole();
+                            // Fetch the player's room
+                            fetchPlayerRoom();
                         }
                     });
             }, 2000);  // Poll every 2 seconds
         }
+
         // Function to send the ready status to the server and update the player's status in the table
         function setReadyStatus() {
             fetch(`/ready/${lobbyCode}`, {
@@ -413,6 +425,61 @@
                 // Disable the Ready button
                 document.getElementById("ready-button").disabled = true;
             });
+        }
+
+        function fetchPlayerRoom() {
+            // Fetch the player's room from the backend
+            return fetch(`/get_room/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.room) {
+                    playerRoom = data.room;
+                } else {
+                    console.error('Error fetching room:', data.error);
+                    alert('Error fetching room: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching room:', error);
+                alert('An error occurred while fetching your room.');
+            });
+        }
+
+        function toggleRoom() {
+            if (!roomRevealed) {
+                if (!playerRoom) {
+                    // Fetch the room if it hasn't been fetched yet
+                    fetchPlayerRoom().then(() => {
+                        revealRoom();
+                    });
+                } else {
+                    revealRoom();
+                }
+            } else {
+                hideRoom();
+            }
+        }
+
+        function revealRoom() {
+            document.getElementById('room-display').innerText = `Your assigned room is: ${playerRoom}`;
+            document.getElementById('room-display').classList.remove('hidden');
+            document.getElementById('toggle-room-button').innerText = 'Hide Room';
+            roomRevealed = true;
+        }
+
+        function hideRoom() {
+            document.getElementById('room-display').innerText = '';
+            document.getElementById('room-display').classList.add('hidden');
+            document.getElementById('toggle-room-button').innerText = 'Reveal Room';
+            roomRevealed = false;
         }
     </script>
 </body>

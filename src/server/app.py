@@ -104,8 +104,14 @@ def set_ready_status(lobby_code):
             # Assign roles using game_logic
             roles = game_logic.assign_roles(lobby_data['player_names'])
             lobby_data['roles'] = roles  # Store roles in lobby data
+
+            # Assign rooms using game_logic
+            rooms = lobby_data['rooms']
+            room_assignments = game_logic.assign_rooms(lobby_data['player_names'], rooms)
+            lobby_data['room_assignments'] = room_assignments  # Store room assignments
+
             lobby_data['game_started'] = True
-            print(f"All players are ready. Game starting in lobby {lobby_code}. Roles assigned.")
+            print(f"All players are ready. Game starting in lobby {lobby_code}. Roles and rooms assigned.")
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
         return jsonify({'message': 'Player ready status updated'})
@@ -153,6 +159,26 @@ def get_role(lobby_code):
                 return jsonify({'error': 'Player not found in lobby'}), 404
         else:
             return jsonify({'error': 'Roles not assigned yet'}), 400
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/get_room/<lobby_code>', methods=['POST'])
+def get_room(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+        if lobby_data.get('room_assignments'):
+            room = lobby_data['room_assignments'].get(player_name)
+            if room:
+                return jsonify({'room': room})
+            else:
+                return jsonify({'error': 'Player not found in lobby'}), 404
+        else:
+            return jsonify({'error': 'Rooms not assigned yet'}), 400
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
