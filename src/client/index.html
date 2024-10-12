@@ -149,6 +149,24 @@
         <!-- Voting Table Section (initially hidden) -->
         <div id="voting-section" class="hidden">
             <h2>Vote for a Player</h2>
+            <!-- Skip Button -->
+            <button id="skip-button" onclick="skipVote()">Skip</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Players</th>
+                        <th>Vote</th>
+                    </tr>
+                </thead>
+                <tbody id="voting-table-body">
+                    <!-- Voting options will be generated dynamically -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Voting Table Section (initially hidden) -->
+        <div id="voting-section" class="hidden">
+            <h2>Vote for a Player</h2>
             <table>
                 <thead>
                     <tr>
@@ -740,6 +758,11 @@
                         row.appendChild(voteCell);
                         votingTableBody.appendChild(row);
                     });
+
+                    // Disable the Skip button if the player has voted or skipped
+                    if (hasVoted) {
+                        document.getElementById('skip-button').disabled = true;
+                    }
                 })
                 .catch(error => {
                     console.error('Error fetching player list for voting:', error);
@@ -764,6 +787,8 @@
                     hasVoted = true;
                     alert(`You voted for ${votedPlayer}`);
                     populateVotingTable();
+                    // Disable the Skip button
+                    document.getElementById('skip-button').disabled = true;
                 } else {
                     alert('Unable to submit vote: ' + data.error);
                 }
@@ -771,6 +796,34 @@
             .catch(error => {
                 console.error('Error submitting vote:', error);
                 alert('An error occurred while submitting your vote.');
+            });
+        }
+
+        function skipVote() {
+            fetch(`/skip_vote/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Vote submitted') {
+                    hasVoted = true;
+                    alert(`You have chosen to skip voting.`);
+                    populateVotingTable();
+                    // Disable the Skip button
+                    document.getElementById('skip-button').disabled = true;
+                } else {
+                    alert('Unable to submit skip: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting skip:', error);
+                alert('An error occurred while submitting your skip.');
             });
         }
     </script>

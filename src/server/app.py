@@ -226,7 +226,7 @@ def call_meeting(lobby_code):
 
         # Initialize votes and voting status
         lobby_data['votes'] = {}  # Reset votes
-        lobby_data['has_voted'] = {}  # Track who has voted
+        lobby_data['has_voted'] = {}  # Track who has voted or skipped
         for player in lobby_data['player_names']:
             lobby_data['has_voted'][player] = False
 
@@ -260,13 +260,48 @@ def submit_vote(lobby_code):
         lobby_data['votes'][player_name] = voted_player
         lobby_data['has_voted'][player_name] = True
 
-        # Check if all players have voted
+        # Check if all players have voted or skipped
         if all(lobby_data['has_voted'].values()):
             # End the meeting
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
-            # Optionally, process votes here (e.g., eliminate a player)
-            print(f"All players have voted in lobby {lobby_code}.")
+            # Optionally, process votes here
+            print(f"All players have voted or skipped in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Vote submitted'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/skip_vote/<lobby_code>', methods=['POST'])
+def skip_vote(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if not lobby_data.get('meeting_active'):
+            return jsonify({'error': 'No meeting in progress'}), 400
+
+        if lobby_data['has_voted'].get(player_name):
+            return jsonify({'error': 'Player has already voted or skipped'}), 400
+
+        # Record the skip
+        lobby_data['votes'][player_name] = 'skip'
+        lobby_data['has_voted'][player_name] = True
+
+        # Check if all players have voted or skipped
+        if all(lobby_data['has_voted'].values()):
+            # End the meeting
+            lobby_data['meeting_active'] = False
+            lobby_data['meeting_start_time'] = None
+            # Optionally, process votes here
+            print(f"All players have voted or skipped in lobby {lobby_code}.")
 
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
