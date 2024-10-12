@@ -475,11 +475,19 @@
                                     meetingStartTime = parseInt(data.meeting_start_time);
                                     startMeetingTimer();
                                     isMeetingActive = true;
+                                } else {
+                                    // Update voting table
+                                    populateVotingTable();
                                 }
                             } else {
                                 if (isMeetingActive) {
-                                    resumeGameTimer();
+                                    // Meeting has ended
+                                    clearInterval(meetingTimerInterval);
+                                    document.getElementById('meeting-timer-section').classList.add('hidden');
+                                    document.getElementById('voting-section').classList.add('hidden');
+                                    hasVoted = false;
                                     isMeetingActive = false;
+                                    resumeGameTimer();
                                 }
                             }
                         }
@@ -624,17 +632,7 @@
             const remainingTime = meetingDurationMs - elapsedTime;
 
             if (remainingTime <= 0) {
-                clearInterval(meetingTimerInterval);
                 document.getElementById('meeting-timer-display').innerText = '00:00:00';
-                // Hide the meeting timer section
-                document.getElementById('meeting-timer-section').classList.add('hidden');
-                // Hide the voting section
-                document.getElementById('voting-section').classList.add('hidden');
-                // Reset the hasVoted flag
-                hasVoted = false;
-                // Signal the end of the meeting
-                isMeetingActive = false;
-                resumeGameTimer();
                 return;
             }
 
@@ -708,11 +706,12 @@
             const votingTableBody = document.getElementById('voting-table-body');
             votingTableBody.innerHTML = ''; // Clear existing entries
 
-            // Fetch the latest player names from the backend
+            // Fetch the latest player names and voting status from the backend
             fetch(`/lobby/${lobbyCode}`)
                 .then(response => response.json())
                 .then(data => {
                     const playerNames = data.player_names;
+                    const hasVotedData = data.has_voted || {};
 
                     playerNames.forEach(player => {
                         const row = document.createElement('tr');
@@ -722,20 +721,23 @@
                         playerCell.innerText = player;
                         row.appendChild(playerCell);
 
-                        // Vote button cell
+                        // Vote button or status cell
                         const voteCell = document.createElement('td');
-                        if (player !== playerName && !hasVoted) {
+
+                        if (player === playerName) {
+                            voteCell.innerText = 'You cannot vote for yourself';
+                        } else if (hasVoted) {
+                            voteCell.innerText = 'Vote submitted';
+                        } else if (hasVotedData[playerName]) {
+                            voteCell.innerText = `${player} has voted`;
+                        } else {
                             const voteButton = document.createElement('button');
                             voteButton.innerText = 'Vote';
                             voteButton.onclick = () => castVote(player);
                             voteCell.appendChild(voteButton);
-                        } else if (player === playerName) {
-                            voteCell.innerText = 'You cannot vote for yourself';
-                        } else if (hasVoted) {
-                            voteCell.innerText = 'Vote submitted';
                         }
-                        row.appendChild(voteCell);
 
+                        row.appendChild(voteCell);
                         votingTableBody.appendChild(row);
                     });
                 })
@@ -746,12 +748,30 @@
 
         // Function to handle casting a vote
         function castVote(votedPlayer) {
-            // For now, we'll just set hasVoted to true and disable the voting buttons
-            hasVoted = true;
-            alert(`You voted for ${votedPlayer}`);
-            // Re-populate the voting table to reflect the vote
-            populateVotingTable();
-            // In the future, you can send the vote to the backend here
+            fetch(`/submit_vote/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName,
+                    voted_player: votedPlayer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Vote submitted') {
+                    hasVoted = true;
+                    alert(`You voted for ${votedPlayer}`);
+                    populateVotingTable();
+                } else {
+                    alert('Unable to submit vote: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting vote:', error);
+                alert('An error occurred while submitting your vote.');
+            });
         }
     </script>
 </body>

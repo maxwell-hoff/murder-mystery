@@ -144,11 +144,12 @@ def get_lobby(lobby_code):
         return jsonify({
             'player_names': lobby_data['player_names'],
             'ready_statuses': lobby_data['ready_statuses'],
-            'game_started': lobby_data['game_started'],   # Include game_started
-            'duration': lobby_data.get('duration'),       # Include game duration
-            'game_start_time': lobby_data.get('game_start_time'),  # Include game start time
-            'meeting_active': lobby_data.get('meeting_active', False),  # Include meeting status
-            'meeting_start_time': lobby_data.get('meeting_start_time')  # Include meeting start time
+            'game_started': lobby_data['game_started'],
+            'duration': lobby_data.get('duration'),
+            'game_start_time': lobby_data.get('game_start_time'),
+            'meeting_active': lobby_data.get('meeting_active', False),
+            'meeting_start_time': lobby_data.get('meeting_start_time'),
+            'has_voted': lobby_data.get('has_voted', {})
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
@@ -218,9 +219,16 @@ def call_meeting(lobby_code):
         if lobby_data.get('meeting_active'):
             return jsonify({'error': 'A meeting is already in progress'}), 400
 
+        # After starting the meeting
         # Start the meeting
         lobby_data['meeting_active'] = True
         lobby_data['meeting_start_time'] = int(round(time.time() * 1000))
+
+        # Initialize votes and voting status
+        lobby_data['votes'] = {}  # Reset votes
+        lobby_data['has_voted'] = {}  # Track who has voted
+        for player in lobby_data['player_names']:
+            lobby_data['has_voted'][player] = False
 
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
@@ -231,6 +239,41 @@ def call_meeting(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/submit_vote/<lobby_code>', methods=['POST'])
+def submit_vote(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    voted_player = data.get('voted_player')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if not lobby_data.get('meeting_active'):
+            return jsonify({'error': 'No meeting in progress'}), 400
+
+        if lobby_data['has_voted'].get(player_name):
+            return jsonify({'error': 'Player has already voted'}), 400
+
+        # Record the vote
+        lobby_data['votes'][player_name] = voted_player
+        lobby_data['has_voted'][player_name] = True
+
+        # Check if all players have voted
+        if all(lobby_data['has_voted'].values()):
+            # End the meeting
+            lobby_data['meeting_active'] = False
+            lobby_data['meeting_start_time'] = None
+            # Optionally, process votes here (e.g., eliminate a player)
+            print(f"All players have voted in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Vote submitted'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
