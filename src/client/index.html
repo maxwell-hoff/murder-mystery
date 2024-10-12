@@ -12,10 +12,12 @@
             text-align: center;
             margin-top: 50px;
         }
+        
         #initial-screen h1 {
             font-size: 48px;
             margin-bottom: 40px;
         }
+
         #initial-screen button {
             font-size: 24px;
             padding: 10px 20px;
@@ -34,6 +36,17 @@
         }
         .error {
             color: red;
+        }
+        #voting-section table {
+            width: 100%;
+        }
+
+        #voting-section th, #voting-section td {
+            text-align: center;
+        }
+
+        #voting-section button {
+            padding: 5px 10px;
         }
     </style>
 </head>
@@ -132,6 +145,22 @@
         <h2>Room Assignment:</h2>
         <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
         <p id="room-display" class="hidden"></p>
+
+        <!-- Voting Table Section (initially hidden) -->
+        <div id="voting-section" class="hidden">
+            <h2>Vote for a Player</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Players</th>
+                        <th>Vote</th>
+                    </tr>
+                </thead>
+                <tbody id="voting-table-body">
+                    <!-- Voting options will be generated dynamically -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <!-- Room Names Section (initially hidden) -->
@@ -163,6 +192,7 @@
         let meetingStartTime;           // Store the meeting start time
         let meetingDurationMs = 5 * 60 * 1000; // Meeting duration in milliseconds (5 minutes)
         let isMeetingActive = false;    // Flag to check if a meeting is active
+        let hasVoted = false; // Flag to prevent multiple votes
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -576,6 +606,10 @@
 
             document.getElementById('meeting-timer-section').classList.remove('hidden');
 
+            // Show the voting section
+            document.getElementById('voting-section').classList.remove('hidden');
+            populateVotingTable();
+
             updateMeetingTimerDisplay();
 
             meetingTimerInterval = setInterval(() => {
@@ -594,6 +628,10 @@
                 document.getElementById('meeting-timer-display').innerText = '00:00:00';
                 // Hide the meeting timer section
                 document.getElementById('meeting-timer-section').classList.add('hidden');
+                // Hide the voting section
+                document.getElementById('voting-section').classList.add('hidden');
+                // Reset the hasVoted flag
+                hasVoted = false;
                 // Signal the end of the meeting
                 isMeetingActive = false;
                 resumeGameTimer();
@@ -663,6 +701,57 @@
             const formattedCentiseconds = String(centiseconds).padStart(2, '0');
 
             document.getElementById('timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
+        }
+
+        // Function to populate the voting table
+        function populateVotingTable() {
+            const votingTableBody = document.getElementById('voting-table-body');
+            votingTableBody.innerHTML = ''; // Clear existing entries
+
+            // Fetch the latest player names from the backend
+            fetch(`/lobby/${lobbyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const playerNames = data.player_names;
+
+                    playerNames.forEach(player => {
+                        const row = document.createElement('tr');
+
+                        // Player name cell
+                        const playerCell = document.createElement('td');
+                        playerCell.innerText = player;
+                        row.appendChild(playerCell);
+
+                        // Vote button cell
+                        const voteCell = document.createElement('td');
+                        if (player !== playerName && !hasVoted) {
+                            const voteButton = document.createElement('button');
+                            voteButton.innerText = 'Vote';
+                            voteButton.onclick = () => castVote(player);
+                            voteCell.appendChild(voteButton);
+                        } else if (player === playerName) {
+                            voteCell.innerText = 'You cannot vote for yourself';
+                        } else if (hasVoted) {
+                            voteCell.innerText = 'Vote submitted';
+                        }
+                        row.appendChild(voteCell);
+
+                        votingTableBody.appendChild(row);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching player list for voting:', error);
+                });
+        }
+
+        // Function to handle casting a vote
+        function castVote(votedPlayer) {
+            // For now, we'll just set hasVoted to true and disable the voting buttons
+            hasVoted = true;
+            alert(`You voted for ${votedPlayer}`);
+            // Re-populate the voting table to reflect the vote
+            populateVotingTable();
+            // In the future, you can send the vote to the backend here
         }
     </script>
 </body>
