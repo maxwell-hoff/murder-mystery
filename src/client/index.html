@@ -167,10 +167,13 @@
         <!-- Voting Table Section (initially hidden) -->
         <div id="voting-section" class="hidden">
             <h2>Vote for a Player</h2>
+            <!-- Skip Button -->
+            <button id="skip-button" onclick="skipVote()">Skip</button>
             <table>
                 <thead>
                     <tr>
                         <th>Players</th>
+                        <th>Status</th>
                         <th>Vote</th>
                     </tr>
                 </thead>
@@ -457,11 +460,18 @@
         }
 
         // Function to update the player list and ready statuses
-        function updatePlayerList(playerNames, readyStatuses) {
+        function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}) {
             for (let i = 0; i < maxPlayers; i++) {
-                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i] || 'Waiting for player...';
-                const status = readyStatuses[i];
-                document.getElementById(`status-${i + 1}`).innerText = status === true ? 'Ready' : '';
+                const playerNameInSlot = playerNames[i] || 'Waiting for player...';
+                document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
+                const statusCell = document.getElementById(`status-${i + 1}`);
+                const readyStatus = readyStatuses[i];
+
+                if (playerStatuses[playerNameInSlot]) {
+                    statusCell.innerText = playerStatuses[playerNameInSlot];
+                } else {
+                    statusCell.innerText = readyStatus === true ? 'Ready' : '';
+                }
             }
         }
 
@@ -471,7 +481,15 @@
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
                     .then(data => {
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses);
+
+                        // Check if player is dead
+                        const playerStatus = data.player_statuses[playerName];
+                        if (playerStatus === 'dead') {
+                            document.getElementById('call-meeting-button').disabled = true;
+                            document.getElementById('toggle-room-button').disabled = true;
+                        }
+                        
                         if (data.game_started) {
                             if (!gameStartTime) {
                                 // Hide the lobby screen and show the game screen
@@ -724,12 +742,12 @@
             const votingTableBody = document.getElementById('voting-table-body');
             votingTableBody.innerHTML = ''; // Clear existing entries
 
-            // Fetch the latest player names and voting status from the backend
             fetch(`/lobby/${lobbyCode}`)
                 .then(response => response.json())
                 .then(data => {
                     const playerNames = data.player_names;
                     const hasVotedData = data.has_voted || {};
+                    const playerStatuses = data.player_statuses || {};
 
                     playerNames.forEach(player => {
                         const row = document.createElement('tr');
@@ -739,10 +757,19 @@
                         playerCell.innerText = player;
                         row.appendChild(playerCell);
 
+                        // Status cell
+                        const statusCell = document.createElement('td');
+                        statusCell.innerText = playerStatuses[player] || 'unknown';
+                        row.appendChild(statusCell);
+
                         // Vote button or status cell
                         const voteCell = document.createElement('td');
 
-                        if (player === playerName) {
+                        if (playerStatuses[playerName] !== 'alive') {
+                            voteCell.innerText = 'You are dead';
+                        } else if (playerStatuses[player] !== 'alive') {
+                            voteCell.innerText = `${player} is dead`;
+                        } else if (player === playerName) {
                             voteCell.innerText = 'You cannot vote for yourself';
                         } else if (hasVoted) {
                             voteCell.innerText = 'Vote submitted';
@@ -759,9 +786,11 @@
                         votingTableBody.appendChild(row);
                     });
 
-                    // Disable the Skip button if the player has voted or skipped
-                    if (hasVoted) {
+                    // Disable the Skip button if the player has voted or skipped or is dead
+                    if (hasVoted || playerStatuses[playerName] !== 'alive') {
                         document.getElementById('skip-button').disabled = true;
+                    } else {
+                        document.getElementById('skip-button').disabled = false;
                     }
                 })
                 .catch(error => {

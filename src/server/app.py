@@ -121,6 +121,8 @@ def set_ready_status(lobby_code):
             # Initialize meeting state
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
+            # Initialize player statuses
+            lobby_data['player_statuses'] = {player: 'alive' for player in lobby_data['player_names']}
 
             # Update the lobby data in Redis
             r.set(lobby_key, json.dumps(lobby_data))
@@ -149,7 +151,8 @@ def get_lobby(lobby_code):
             'game_start_time': lobby_data.get('game_start_time'),
             'meeting_active': lobby_data.get('meeting_active', False),
             'meeting_start_time': lobby_data.get('meeting_start_time'),
-            'has_voted': lobby_data.get('has_voted', {})
+            'has_voted': lobby_data.get('has_voted', {}),
+            'player_statuses': lobby_data.get('player_statuses', {})  # Include player statuses
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
@@ -256,20 +259,25 @@ def submit_vote(lobby_code):
         if lobby_data['has_voted'].get(player_name):
             return jsonify({'error': 'Player has already voted'}), 400
 
+        # Check if player is alive
+        if lobby_data['player_statuses'].get(player_name) != 'alive':
+            return jsonify({'error': 'Dead players cannot vote'}), 400
+
         # Record the vote
         lobby_data['votes'][player_name] = voted_player
         lobby_data['has_voted'][player_name] = True
 
-        # Check if all players have voted or skipped
-        if all(lobby_data['has_voted'].values()):
+        # Check if all alive players have voted or skipped
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        if all(lobby_data['has_voted'].get(player, False) for player in alive_players):
             # End the meeting
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
-            # Optionally, process votes here
+            # Process votes
+            process_votes(lobby_data)
+            # Update the lobby data in Redis
+            r.set(lobby_key, json.dumps(lobby_data))
             print(f"All players have voted or skipped in lobby {lobby_code}.")
-
-        # Update the lobby data in Redis
-        r.set(lobby_key, json.dumps(lobby_data))
 
         return jsonify({'message': 'Vote submitted'})
     else:
@@ -291,24 +299,66 @@ def skip_vote(lobby_code):
         if lobby_data['has_voted'].get(player_name):
             return jsonify({'error': 'Player has already voted or skipped'}), 400
 
+        # Check if player is alive
+        if lobby_data['player_statuses'].get(player_name) != 'alive':
+            return jsonify({'error': 'Dead players cannot vote'}), 400
+
         # Record the skip
         lobby_data['votes'][player_name] = 'skip'
         lobby_data['has_voted'][player_name] = True
 
-        # Check if all players have voted or skipped
-        if all(lobby_data['has_voted'].values()):
+        # At the end of the function, after updating `has_voted`:
+        # Check if all alive players have voted or skipped
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        if all(lobby_data['has_voted'].get(player, False) for player in alive_players):
             # End the meeting
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
-            # Optionally, process votes here
+            # Process votes
+            process_votes(lobby_data)
+            # Update the lobby data in Redis
+            r.set(lobby_key, json.dumps(lobby_data))
             print(f"All players have voted or skipped in lobby {lobby_code}.")
-
-        # Update the lobby data in Redis
-        r.set(lobby_key, json.dumps(lobby_data))
 
         return jsonify({'message': 'Vote submitted'})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
+
+def process_votes(lobby_data):
+    votes = lobby_data['votes']
+    player_statuses = lobby_data['player_statuses']
+    
+    # Only consider votes from alive players
+    alive_players = [player for player, status in player_statuses.items() if status == 'alive']
+    alive_votes = {player: vote for player, vote in votes.items() if player_statuses[player] == 'alive'}
+    
+    # Count votes for each player
+    vote_counts = {}
+    for vote in alive_votes.values():
+        if vote != 'skip':
+            vote_counts[vote] = vote_counts.get(vote, 0) + 1
+    
+    if not vote_counts:
+        # No votes cast
+        return
+    
+    # Find the player(s) with the highest votes
+    max_votes = max(vote_counts.values())
+    players_with_max_votes = [player for player, count in vote_counts.items() if count == max_votes]
+    
+    # Check for tie
+    if len(players_with_max_votes) > 1:
+        print("Tie detected. No one is eliminated.")
+        return
+    
+    # Check if majority is achieved
+    if max_votes >= (len(alive_players) // 2) + 1:
+        # Eliminate the player
+        eliminated_player = players_with_max_votes[0]
+        player_statuses[eliminated_player] = 'dead'
+        print(f"Player {eliminated_player} has been eliminated.")
+    else:
+        print("No majority. No one is eliminated.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
