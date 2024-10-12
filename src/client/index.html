@@ -553,8 +553,12 @@
 
         // Function to resume the game timer
         function resumeGameTimer() {
-            // Adjust the game start time to account for the paused duration
-            const pausedDuration = Date.now() - (meetingStartTime + meetingDurationMs);
+            // Ensure variables are numbers
+            meetingStartTime = parseInt(meetingStartTime);
+            gameStartTime = parseInt(gameStartTime);
+
+            // Adjust the game start time to account for the actual paused duration
+            const pausedDuration = Date.now() - meetingStartTime - meetingServerTimeOffset;
             gameStartTime += pausedDuration;
 
             timerInterval = setInterval(() => {
@@ -564,23 +568,25 @@
 
         // Function to start the meeting timer
         function startMeetingTimer() {
-            // Ensure meetingStartTime is a number
             meetingStartTime = parseInt(meetingStartTime);
 
-            // Do not recalculate meetingDurationMs here if it's already set globally
-            // Show the meeting timer section
+            // Calculate the offset between client and server time
+            const clientTimeNow = Date.now();
+            meetingServerTimeOffset = clientTimeNow - meetingStartTime;
+
             document.getElementById('meeting-timer-section').classList.remove('hidden');
 
-            updateMeetingTimerDisplay(); // Initial display update
+            updateMeetingTimerDisplay();
 
             meetingTimerInterval = setInterval(() => {
                 updateMeetingTimerDisplay();
-            }, 10); // Update every 10 milliseconds
+            }, 10);
         }
 
         // Function to update the meeting timer display
         function updateMeetingTimerDisplay() {
-            const elapsedTime = Date.now() - meetingStartTime;
+            const currentTime = Date.now() - meetingServerTimeOffset;
+            const elapsedTime = currentTime - meetingStartTime;
             const remainingTime = meetingDurationMs - elapsedTime;
 
             if (remainingTime <= 0) {
@@ -637,7 +643,8 @@
                 return; // Do not update the game timer while meeting is active
             }
 
-            const elapsedTime = Date.now() - gameStartTime;
+            const currentTime = Date.now() - serverTimeOffset;
+            const elapsedTime = currentTime - gameStartTime;
             const remainingTime = gameDurationMs - elapsedTime;
 
             if (remainingTime <= 0) {
