@@ -448,7 +448,7 @@
                         maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = lobbyCode;
                         generatePlayerList(maxPlayers);
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names, data.ready_statuses, {}, false);
                         startPolling();
                     });
                 } else if (currentAction === 'join') {
@@ -504,16 +504,19 @@
         }
 
         // Function to update the player list and ready statuses
-        function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}) {
+        function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}, gameStarted) {
             for (let i = 0; i < maxPlayers; i++) {
                 const playerNameInSlot = playerNames[i] || 'Waiting for player...';
                 document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
                 const statusCell = document.getElementById(`status-${i + 1}`);
-                const readyStatus = readyStatuses[i];
 
-                if (playerStatuses[playerNameInSlot]) {
-                    statusCell.innerText = playerStatuses[playerNameInSlot];
+                if (gameStarted) {
+                    // During the game, show 'alive' or 'dead'
+                    const playerStatus = playerStatuses[playerNameInSlot];
+                    statusCell.innerText = playerStatus ? playerStatus : '';
                 } else {
+                    // In the lobby, show 'Ready' or blank
+                    const readyStatus = readyStatuses[i];
                     statusCell.innerText = readyStatus === true ? 'Ready' : '';
                 }
             }
@@ -525,7 +528,7 @@
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
                     .then(data => {
-                        updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses);
+                        updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses, data.game_started);
 
                         // Check if player is dead
                         const playerStatus = data.player_statuses[playerName];
@@ -1072,30 +1075,28 @@
             })
             .then(response => {
                 if (!response.ok) {
-                    // If the response is not OK, parse the error message and throw it
                     return response.json().then(err => { throw err; });
                 }
                 return response.json();
             })
             .then(data => {
-                if (data.message === 'Lobby has been reset') {
-                    // Hide the game screen
-                    document.getElementById('game-screen').classList.add('hidden');
-                    // Show the lobby screen
-                    document.getElementById('lobby-screen').classList.remove('hidden');
+                console.log('Data received from reset_lobby:', data);
 
-                    // Reset necessary variables
-                    resetGameVariables();
+                // Proceed without strict message check
+                // Hide the game screen
+                document.getElementById('game-screen').classList.add('hidden');
+                // Show the lobby screen
+                document.getElementById('lobby-screen').classList.remove('hidden');
 
-                    // Start polling again to update the lobby status
-                    startPolling();
-                } else {
-                    alert('Error resetting lobby: ' + data.error);
-                }
+                // Reset necessary variables
+                resetGameVariables();
+
+                // Start polling again to update the lobby status
+                startPolling();
             })
             .catch(error => {
                 console.error('Error resetting lobby:', error);
-                alert('Error resetting lobby: ' + (error.error || 'An unknown error occurred.'));
+                alert('Error resetting lobby: ' + (error.message || 'An unknown error occurred.'));
             });
         }
 
@@ -1118,6 +1119,8 @@
                 return response.json();
             })
             .then(data => {
+                console.log('Data received from leave_lobby:', data);
+
                 // Hide all screens
                 document.getElementById('game-screen').classList.add('hidden');
                 document.getElementById('lobby-screen').classList.add('hidden');
@@ -1131,7 +1134,7 @@
             })
             .catch(error => {
                 console.error('Error leaving lobby:', error);
-                alert('Error leaving lobby: ' + (error.error || 'An unknown error occurred.'));
+                alert('Error leaving lobby: ' + (error.message || 'An unknown error occurred.'));
             });
         }
 
