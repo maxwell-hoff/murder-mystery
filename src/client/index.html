@@ -1059,7 +1059,8 @@
         }
 
         function returnToLobby() {
-            // Send request to reset the lobby on the backend
+            console.log(`returnToLobby called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
+
             fetch(`/reset_lobby/${lobbyCode}`, {
                 method: "POST",
                 headers: {
@@ -1069,7 +1070,13 @@
                     player_name: playerName
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    // If the response is not OK, parse the error message and throw it
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.message === 'Lobby has been reset') {
                     // Hide the game screen
@@ -1088,12 +1095,13 @@
             })
             .catch(error => {
                 console.error('Error resetting lobby:', error);
-                alert('An error occurred while resetting the lobby.');
+                alert('Error resetting lobby: ' + (error.error || 'An unknown error occurred.'));
             });
         }
 
         function returnToHome() {
-            // Send request to leave the lobby on the backend
+            console.log(`returnToHome called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
+
             fetch(`/leave_lobby/${lobbyCode}`, {
                 method: "POST",
                 headers: {
@@ -1103,7 +1111,12 @@
                     player_name: playerName
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
             .then(data => {
                 // Hide all screens
                 document.getElementById('game-screen').classList.add('hidden');
@@ -1118,7 +1131,7 @@
             })
             .catch(error => {
                 console.error('Error leaving lobby:', error);
-                alert('An error occurred while leaving the lobby.');
+                alert('Error leaving lobby: ' + (error.error || 'An unknown error occurred.'));
             });
         }
 

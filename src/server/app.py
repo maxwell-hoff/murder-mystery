@@ -405,9 +405,11 @@ def game_time_expired(lobby_code):
 
 @app.route('/leave_lobby/<lobby_code>', methods=['POST'])
 def leave_lobby(lobby_code):
+    print(f"leave_lobby called with lobby_code: {lobby_code}")
     data = request.get_json()
     player_name = data.get('player_name')
     lobby_key = f"lobby:{lobby_code}"
+    print(f"Player name received: {player_name}")
 
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
@@ -444,10 +446,12 @@ def leave_lobby(lobby_code):
 
 @app.route('/reset_lobby/<lobby_code>', methods=['POST'])
 def reset_lobby(lobby_code):
-    lobby_key = f"lobby:{lobby_code}"
+    print(f"reset_lobby called with lobby_code: {lobby_code}")
     data = request.get_json()
     player_name = data.get('player_name')
+    print(f"Player name received: {player_name}")
 
+    lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
