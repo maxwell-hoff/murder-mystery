@@ -275,9 +275,10 @@ def submit_vote(lobby_code):
             lobby_data['meeting_start_time'] = None
             # Process votes
             process_votes(lobby_data)
-            # Update the lobby data in Redis
-            r.set(lobby_key, json.dumps(lobby_data))
             print(f"All players have voted or skipped in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis (moved outside the if block)
+        r.set(lobby_key, json.dumps(lobby_data))
 
         return jsonify({'message': 'Vote submitted'})
     else:
@@ -307,7 +308,6 @@ def skip_vote(lobby_code):
         lobby_data['votes'][player_name] = 'skip'
         lobby_data['has_voted'][player_name] = True
 
-        # At the end of the function, after updating `has_voted`:
         # Check if all alive players have voted or skipped
         alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
         if all(lobby_data['has_voted'].get(player, False) for player in alive_players):
@@ -316,9 +316,10 @@ def skip_vote(lobby_code):
             lobby_data['meeting_start_time'] = None
             # Process votes
             process_votes(lobby_data)
-            # Update the lobby data in Redis
-            r.set(lobby_key, json.dumps(lobby_data))
             print(f"All players have voted or skipped in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis (moved outside the if block)
+        r.set(lobby_key, json.dumps(lobby_data))
 
         return jsonify({'message': 'Vote submitted'})
     else:
