@@ -990,22 +990,22 @@
                 message = 'Game over!';
             }
 
-            alert(message);
-
-            // Optionally, you can display the message on the game screen
-            const gameScreen = document.getElementById('game-screen');
-            gameScreen.innerHTML = `<h1>${message}</h1>`;
-
-            // Disable buttons
-            document.getElementById('call-meeting-button').disabled = true;
-            document.getElementById('toggle-role-button').disabled = true;
-            document.getElementById('toggle-room-button').disabled = true;
-            document.getElementById('skip-button').disabled = true;
-
             // Stop timers
             clearInterval(timerInterval);
             clearInterval(meetingTimerInterval);
             clearInterval(pollingInterval);
+
+            // Optionally, you can display the message on the game screen
+            const gameScreen = document.getElementById('game-screen');
+            gameScreen.innerHTML = `
+                <h1>${message}</h1>
+                <button id="return-to-lobby-button">Return to Lobby</button>
+                <button id="return-to-home-button">Return to Home Screen</button>
+            `;
+
+            // Attach event listeners to the buttons
+            document.getElementById('return-to-lobby-button').onclick = returnToLobby;
+            document.getElementById('return-to-home-button').onclick = returnToHome;
         }
 
         function gameTimeExpired() {
@@ -1027,6 +1027,119 @@
             .catch(error => {
                 console.error('Error processing game time expiration:', error);
             });
+        }
+
+        function returnToLobby() {
+            // Hide the game screen
+            document.getElementById('game-screen').classList.add('hidden');
+            // Show the lobby screen
+            document.getElementById('lobby-screen').classList.remove('hidden');
+
+            // Reset necessary variables
+            resetGameVariables();
+
+            // Start polling again to update the lobby status
+            startPolling();
+        }
+
+        function returnToHome() {
+            // Hide all screens
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.add('hidden');
+            document.getElementById('create-join-section').classList.add('hidden');
+
+            // Show the initial screen
+            document.getElementById('initial-screen').classList.remove('hidden');
+
+            // Reset all variables
+            resetAllVariables();
+
+            // Optionally, you may want to leave the lobby on the backend
+            // This would require implementing a 'leave lobby' endpoint on your backend
+        }
+
+        function resetGameVariables() {
+            roleRevealed = false;
+            playerRole = '';
+            roomRevealed = false;
+            playerRoom = '';
+            gameStartTime = null;
+            gameDurationMs = 0;
+            isMeetingActive = false;
+            hasVoted = false;
+
+            // Clear intervals if not already cleared
+            clearInterval(timerInterval);
+            clearInterval(meetingTimerInterval);
+
+            // Reset the Ready button
+            document.getElementById("ready-button").disabled = false;
+
+            // Clear activity log
+            document.getElementById('activity-log').innerHTML = '';
+
+            // Reset game screen content
+            document.getElementById('game-screen').innerHTML = `
+                <h1>Game Screen</h1>
+                <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
+                <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
+                <div id="meeting-timer-section" class="hidden">
+                    <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
+                </div>
+                <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
+                <p id="role-display" class="hidden"></p>
+                <h2>Room Assignment:</h2>
+                <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
+                <p id="room-display" class="hidden"></p>
+                <div id="voting-section" class="hidden">
+                    <h2>Vote for a Player</h2>
+                    <button id="skip-button" onclick="skipVote()">Skip</button>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Players</th>
+                                <th>Status</th>
+                                <th>Vote</th>
+                            </tr>
+                        </thead>
+                        <tbody id="voting-table-body">
+                            <!-- Voting options will be generated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="activity-log-section">
+                    <h2>Activity Log</h2>
+                    <ul id="activity-log">
+                        <!-- Activity log entries will be dynamically added here -->
+                    </ul>
+                </div>
+            `;
+        }
+
+        function resetAllVariables() {
+            // Call resetGameVariables to reset game-specific variables
+            resetGameVariables();
+
+            // Reset lobby variables
+            maxPlayers = 0;
+            currentAction = '';
+            lobbyCode = '';
+            playerName = '';
+            roomNames = [];
+            gameDuration = 0;
+
+            // Clear intervals if not already cleared
+            clearInterval(pollingInterval);
+
+            // Clear name input
+            document.getElementById("player-name").value = '';
+
+            // Reset the lobby screen
+            document.getElementById("lobby-code").innerText = '';
+            document.getElementById("player-list").innerHTML = '';
+
+            // Reset the Ready button
+            document.getElementById("ready-button").disabled = false;
         }
     </script>
 </body>
