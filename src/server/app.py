@@ -339,6 +339,41 @@ def get_activity_log(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/meeting_expired/<lobby_code>', methods=['POST'])
+def meeting_expired(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')  # Not strictly necessary here
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if not lobby_data.get('meeting_active'):
+            return jsonify({'error': 'No meeting in progress'}), 400
+
+        # For all alive players who haven't voted, mark their vote as 'skip'
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        for player in alive_players:
+            if not lobby_data['has_voted'].get(player):
+                lobby_data['votes'][player] = 'skip'
+                lobby_data['has_voted'][player] = True
+
+        # End the meeting
+        lobby_data['meeting_active'] = False
+        lobby_data['meeting_start_time'] = None
+
+        # Process votes
+        process_votes(lobby_data)
+        print(f"Meeting timer expired. Votes processed in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Meeting expired and votes processed'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']

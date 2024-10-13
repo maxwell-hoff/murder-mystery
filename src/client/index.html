@@ -560,15 +560,20 @@
                                 }
                             } else {
                                 if (isMeetingActive) {
-                                    // Meeting has ended
-                                    clearInterval(meetingTimerInterval);
-                                    document.getElementById('meeting-timer-section').classList.add('hidden');
-                                    document.getElementById('voting-section').classList.add('hidden');
-                                    hasVoted = false;
-                                    isMeetingActive = false;
-                                    resumeGameTimer();
-                                    // Update the activity log
-                                    updateActivityLog();
+                                    if (!data.meeting_active) {
+                                        // Meeting has ended
+                                        clearInterval(meetingTimerInterval);
+                                        document.getElementById('meeting-timer-section').classList.add('hidden');
+                                        document.getElementById('voting-section').classList.add('hidden');
+                                        hasVoted = false;
+                                        isMeetingActive = false;
+                                        resumeGameTimer();
+                                        // Update the activity log
+                                        updateActivityLog();
+                                    } else {
+                                        // Update voting table
+                                        populateVotingTable();
+                                    }
                                 }
                             }
                         }
@@ -717,6 +722,14 @@
 
             if (remainingTime <= 0) {
                 document.getElementById('meeting-timer-display').innerText = '00:00:00';
+                
+                // Clear the meeting timer interval
+                clearInterval(meetingTimerInterval);
+                // Set the meeting as inactive
+                isMeetingActive = false;
+                // Inform the backend that the meeting timer has expired
+                meetingTimerExpired();
+
                 return;
             }
 
@@ -729,6 +742,37 @@
             const formattedCentiseconds = String(centiseconds).padStart(2, '0');
 
             document.getElementById('meeting-timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
+        }
+
+        // Logic for when meeting timer runs out since this doesn't work automatically
+        function meetingTimerExpired() {
+            fetch(`/meeting_expired/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Meeting expired and votes processed') {
+                    // Resume the game timer
+                    resumeGameTimer();
+                    // Hide meeting-related sections
+                    document.getElementById('meeting-timer-section').classList.add('hidden');
+                    document.getElementById('voting-section').classList.add('hidden');
+                    hasVoted = false;
+                    // Update the activity log
+                    updateActivityLog();
+                } else {
+                    console.error('Error processing expired meeting:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error processing expired meeting:', error);
+            });
         }
 
         // Function to handle "Call Meeting" button click
