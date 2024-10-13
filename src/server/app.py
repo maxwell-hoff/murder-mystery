@@ -46,6 +46,7 @@ def create_lobby():
         'game_started': False,      # New flag to indicate if the game has started
         'duration': int(duration),  # Store the game duration in minutes
         'game_start_time': None     # Will store the game start timestamp
+        'activity_log': []  # Initialize the activity log
     }
     # Store the lobby data in Redis
     r.set(f"lobby:{lobby_code}", json.dumps(lobby_data))
@@ -325,10 +326,22 @@ def skip_vote(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/activity_log/<lobby_code>', methods=['GET'])
+def get_activity_log(lobby_code):
+    lobby_key = f"lobby:{lobby_code}"
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+        activity_log = lobby_data.get('activity_log', [])
+        return jsonify({'activity_log': activity_log})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
-    
+    game_start_time = lobby_data.get('game_start_time')
+
     # Only consider votes from alive players
     alive_players = [player for player, status in player_statuses.items() if status == 'alive']
     alive_votes = {player: vote for player, vote in votes.items() if player_statuses[player] == 'alive'}
@@ -338,28 +351,53 @@ def process_votes(lobby_data):
     for vote in alive_votes.values():
         if vote != 'skip':
             vote_counts[vote] = vote_counts.get(vote, 0) + 1
-    
+
+    # Initialize message
+    message = ""
+
     if not vote_counts:
         # No votes cast
-        return
-    
-    # Find the player(s) with the highest votes
-    max_votes = max(vote_counts.values())
-    players_with_max_votes = [player for player, count in vote_counts.items() if count == max_votes]
-    
-    # Check for tie
-    if len(players_with_max_votes) > 1:
-        print("Tie detected. No one is eliminated.")
-        return
-    
-    # Check if majority is achieved
-    if max_votes >= (len(alive_players) // 2) + 1:
-        # Eliminate the player
-        eliminated_player = players_with_max_votes[0]
-        player_statuses[eliminated_player] = 'dead'
-        print(f"Player {eliminated_player} has been eliminated.")
+        message = "No votes were cast."
+        print(message)
     else:
-        print("No majority. No one is eliminated.")
+        # Find the player(s) with the highest votes
+        max_votes = max(vote_counts.values())
+        players_with_max_votes = [player for player, count in vote_counts.items() if count == max_votes]
+        
+        # Check for tie
+        if len(players_with_max_votes) > 1:
+            message = "Tie detected. No one is eliminated."
+            print(message)
+        else:
+            # Check if majority is achieved
+            if max_votes >= (len(alive_players) // 2) + 1:
+                # Eliminate the player
+                eliminated_player = players_with_max_votes[0]
+                player_statuses[eliminated_player] = 'dead'
+                message = f"Player {eliminated_player} has been eliminated."
+                print(message)
+            else:
+                message = "No majority. No one is eliminated."
+                print(message)
+
+    # Calculate the game time
+    current_time_ms = int(round(time.time() * 1000))
+    elapsed_time_ms = current_time_ms - game_start_time
+    elapsed_time_str = format_time_ms(elapsed_time_ms)
+
+    # Append the message and time to the activity log
+    activity_entry = {
+        'time': elapsed_time_str,
+        'message': message
+    }
+    lobby_data['activity_log'].append(activity_entry)
+
+def format_time_ms(milliseconds):
+    seconds = milliseconds // 1000
+    minutes = seconds // 60
+    seconds = seconds % 60
+    formatted_time = f"{minutes:02}:{seconds:02}"
+    return formatted_time
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

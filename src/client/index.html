@@ -48,6 +48,23 @@
         #voting-section button {
             padding: 5px 10px;
         }
+
+        /* Activity Log Styles */
+        #activity-log-section {
+            margin-top: 20px;
+        }
+
+        #activity-log {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #activity-log li {
+            background-color: #f9f9f9;
+            margin-bottom: 5px;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
     </style>
 </head>
 <body>
@@ -163,6 +180,13 @@
                     <!-- Voting options will be generated dynamically -->
                 </tbody>
             </table>
+        </div>
+        <!-- Activity Log Section -->
+        <div id="activity-log-section">
+            <h2>Activity Log</h2>
+            <ul id="activity-log">
+                <!-- Activity log entries will be dynamically added here -->
+            </ul>
         </div>
     </div>
 
@@ -506,9 +530,14 @@
                                     hasVoted = false;
                                     isMeetingActive = false;
                                     resumeGameTimer();
+                                    // Update the activity log
+                                    updateActivityLog();
                                 }
                             }
                         }
+
+                        // Update the activity log
+                        updateActivityLog();
                     });
             }, 2000);
         }
@@ -836,6 +865,24 @@
                 console.error('Error submitting skip:', error);
                 alert('An error occurred while submitting your skip.');
             });
+        }
+
+        function updateActivityLog() {
+            fetch(`/activity_log/${lobbyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const activityLogList = document.getElementById('activity-log');
+                    activityLogList.innerHTML = ''; // Clear existing entries
+
+                    data.activity_log.forEach(entry => {
+                        const listItem = document.createElement('li');
+                        listItem.innerText = `[${entry.time}] ${entry.message}`;
+                        activityLogList.appendChild(listItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching activity log:', error);
+                });
         }
     </script>
 </body>
