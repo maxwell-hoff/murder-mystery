@@ -12,10 +12,12 @@
             text-align: center;
             margin-top: 50px;
         }
+        
         #initial-screen h1 {
             font-size: 48px;
             margin-bottom: 40px;
         }
+
         #initial-screen button {
             font-size: 24px;
             padding: 10px 20px;
@@ -34,6 +36,34 @@
         }
         .error {
             color: red;
+        }
+        #voting-section table {
+            width: 100%;
+        }
+
+        #voting-section th, #voting-section td {
+            text-align: center;
+        }
+
+        #voting-section button {
+            padding: 5px 10px;
+        }
+
+        /* Activity Log Styles */
+        #activity-log-section {
+            margin-top: 20px;
+        }
+
+        #activity-log {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #activity-log li {
+            background-color: #f9f9f9;
+            margin-bottom: 5px;
+            padding: 10px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
@@ -54,9 +84,6 @@
             <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
                 <label for="rooms">Rooms Available (max 10):</label>
                 <input type="number" id="rooms" name="rooms" min="1" max="10" required><br><br>
-                
-                <label for="players">Number of Players (max 10):</label>
-                <input type="number" id="players" name="players" min="1" max="10" required><br><br>
 
                 <label for="players">Number of Players (min 4, max 10):</label>
                 <input type="number" id="players" name="players" min="4" max="10" required><br><br>
@@ -135,6 +162,32 @@
         <h2>Room Assignment:</h2>
         <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
         <p id="room-display" class="hidden"></p>
+
+        <!-- Voting Table Section (initially hidden) -->
+        <div id="voting-section" class="hidden">
+            <h2>Vote for a Player</h2>
+            <!-- Skip Button -->
+            <button id="skip-button" onclick="skipVote()">Skip</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Players</th>
+                        <th>Status</th>
+                        <th>Vote</th>
+                    </tr>
+                </thead>
+                <tbody id="voting-table-body">
+                    <!-- Voting options will be generated dynamically -->
+                </tbody>
+            </table>
+        </div>
+        <!-- Activity Log Section -->
+        <div id="activity-log-section">
+            <h2>Activity Log</h2>
+            <ul id="activity-log">
+                <!-- Activity log entries will be dynamically added here -->
+            </ul>
+        </div>
     </div>
 
     <!-- Room Names Section (initially hidden) -->
@@ -166,6 +219,7 @@
         let meetingStartTime;           // Store the meeting start time
         let meetingDurationMs = 5 * 60 * 1000; // Meeting duration in milliseconds (5 minutes)
         let isMeetingActive = false;    // Flag to check if a meeting is active
+        let hasVoted = false; // Flag to prevent multiple votes
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -418,11 +472,18 @@
         }
 
         // Function to update the player list and ready statuses
-        function updatePlayerList(playerNames, readyStatuses) {
+        function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}) {
             for (let i = 0; i < maxPlayers; i++) {
-                document.getElementById(`slot-${i + 1}`).innerText = playerNames[i] || 'Waiting for player...';
-                const status = readyStatuses[i];
-                document.getElementById(`status-${i + 1}`).innerText = status === true ? 'Ready' : '';
+                const playerNameInSlot = playerNames[i] || 'Waiting for player...';
+                document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
+                const statusCell = document.getElementById(`status-${i + 1}`);
+                const readyStatus = readyStatuses[i];
+
+                if (playerStatuses[playerNameInSlot]) {
+                    statusCell.innerText = playerStatuses[playerNameInSlot];
+                } else {
+                    statusCell.innerText = readyStatus === true ? 'Ready' : '';
+                }
             }
         }
 
@@ -432,7 +493,15 @@
                 fetch(`/lobby/${lobbyCode}`)
                     .then(response => response.json())
                     .then(data => {
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses);
+
+                        // Check if player is dead
+                        const playerStatus = data.player_statuses[playerName];
+                        if (playerStatus === 'dead') {
+                            document.getElementById('call-meeting-button').disabled = true;
+                            document.getElementById('toggle-room-button').disabled = true;
+                        }
+
                         if (data.game_started) {
                             if (!gameStartTime) {
                                 // Hide the lobby screen and show the game screen
@@ -454,14 +523,27 @@
                                     meetingStartTime = parseInt(data.meeting_start_time);
                                     startMeetingTimer();
                                     isMeetingActive = true;
+                                } else {
+                                    // Update voting table
+                                    populateVotingTable();
                                 }
                             } else {
                                 if (isMeetingActive) {
-                                    resumeGameTimer();
+                                    // Meeting has ended
+                                    clearInterval(meetingTimerInterval);
+                                    document.getElementById('meeting-timer-section').classList.add('hidden');
+                                    document.getElementById('voting-section').classList.add('hidden');
+                                    hasVoted = false;
                                     isMeetingActive = false;
+                                    resumeGameTimer();
+                                    // Update the activity log
+                                    updateActivityLog();
                                 }
                             }
                         }
+
+                        // Update the activity log
+                        updateActivityLog();
                     });
             }, 2000);
         }
@@ -562,8 +644,12 @@
 
         // Function to resume the game timer
         function resumeGameTimer() {
-            // Adjust the game start time to account for the paused duration
-            const pausedDuration = Date.now() - (meetingStartTime + meetingDurationMs);
+            // Ensure variables are numbers
+            meetingStartTime = parseInt(meetingStartTime);
+            gameStartTime = parseInt(gameStartTime);
+
+            // Adjust the game start time to account for the actual paused duration
+            const pausedDuration = Date.now() - meetingStartTime - meetingServerTimeOffset;
             gameStartTime += pausedDuration;
 
             timerInterval = setInterval(() => {
@@ -573,33 +659,33 @@
 
         // Function to start the meeting timer
         function startMeetingTimer() {
-            // Ensure meetingStartTime is a number
             meetingStartTime = parseInt(meetingStartTime);
 
-            // Do not recalculate meetingDurationMs here if it's already set globally
-            // Show the meeting timer section
+            // Calculate the offset between client and server time
+            const clientTimeNow = Date.now();
+            meetingServerTimeOffset = clientTimeNow - meetingStartTime;
+
             document.getElementById('meeting-timer-section').classList.remove('hidden');
 
-            updateMeetingTimerDisplay(); // Initial display update
+            // Show the voting section
+            document.getElementById('voting-section').classList.remove('hidden');
+            populateVotingTable();
+
+            updateMeetingTimerDisplay();
 
             meetingTimerInterval = setInterval(() => {
                 updateMeetingTimerDisplay();
-            }, 10); // Update every 10 milliseconds
+            }, 10);
         }
 
         // Function to update the meeting timer display
         function updateMeetingTimerDisplay() {
-            const elapsedTime = Date.now() - meetingStartTime;
+            const currentTime = Date.now() - meetingServerTimeOffset;
+            const elapsedTime = currentTime - meetingStartTime;
             const remainingTime = meetingDurationMs - elapsedTime;
 
             if (remainingTime <= 0) {
-                clearInterval(meetingTimerInterval);
                 document.getElementById('meeting-timer-display').innerText = '00:00:00';
-                // Hide the meeting timer section
-                document.getElementById('meeting-timer-section').classList.add('hidden');
-                // Signal the end of the meeting
-                isMeetingActive = false;
-                resumeGameTimer();
                 return;
             }
 
@@ -646,7 +732,8 @@
                 return; // Do not update the game timer while meeting is active
             }
 
-            const elapsedTime = Date.now() - gameStartTime;
+            const currentTime = Date.now() - serverTimeOffset;
+            const elapsedTime = currentTime - gameStartTime;
             const remainingTime = gameDurationMs - elapsedTime;
 
             if (remainingTime <= 0) {
@@ -665,6 +752,143 @@
             const formattedCentiseconds = String(centiseconds).padStart(2, '0');
 
             document.getElementById('timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
+        }
+
+        // Function to populate the voting table
+        function populateVotingTable() {
+            const votingTableBody = document.getElementById('voting-table-body');
+            votingTableBody.innerHTML = ''; // Clear existing entries
+
+            fetch(`/lobby/${lobbyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const playerNames = data.player_names;
+                    const hasVotedData = data.has_voted || {};
+                    const playerStatuses = data.player_statuses || {};
+
+                    playerNames.forEach(player => {
+                        const row = document.createElement('tr');
+
+                        // Player name cell
+                        const playerCell = document.createElement('td');
+                        playerCell.innerText = player;
+                        row.appendChild(playerCell);
+
+                        // Status cell
+                        const statusCell = document.createElement('td');
+                        statusCell.innerText = playerStatuses[player] || 'unknown';
+                        row.appendChild(statusCell);
+
+                        // Vote button or status cell
+                        const voteCell = document.createElement('td');
+
+                        if (playerStatuses[playerName] !== 'alive') {
+                            voteCell.innerText = 'You are dead';
+                        } else if (playerStatuses[player] !== 'alive') {
+                            voteCell.innerText = `${player} is dead`;
+                        } else if (player === playerName) {
+                            voteCell.innerText = 'You cannot vote for yourself';
+                        } else if (hasVoted) {
+                            voteCell.innerText = 'Vote submitted';
+                        } else if (hasVotedData[playerName]) {
+                            voteCell.innerText = `${player} has voted`;
+                        } else {
+                            const voteButton = document.createElement('button');
+                            voteButton.innerText = 'Vote';
+                            voteButton.onclick = () => castVote(player);
+                            voteCell.appendChild(voteButton);
+                        }
+
+                        row.appendChild(voteCell);
+                        votingTableBody.appendChild(row);
+                    });
+
+                    // Disable the Skip button if the player has voted or skipped or is dead
+                    if (hasVoted || playerStatuses[playerName] !== 'alive') {
+                        document.getElementById('skip-button').disabled = true;
+                    } else {
+                        document.getElementById('skip-button').disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching player list for voting:', error);
+                });
+        }
+
+        // Function to handle casting a vote
+        function castVote(votedPlayer) {
+            fetch(`/submit_vote/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName,
+                    voted_player: votedPlayer
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Vote submitted') {
+                    hasVoted = true;
+                    alert(`You voted for ${votedPlayer}`);
+                    populateVotingTable();
+                    // Disable the Skip button
+                    document.getElementById('skip-button').disabled = true;
+                } else {
+                    alert('Unable to submit vote: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting vote:', error);
+                alert('An error occurred while submitting your vote.');
+            });
+        }
+
+        function skipVote() {
+            fetch(`/skip_vote/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Vote submitted') {
+                    hasVoted = true;
+                    alert(`You have chosen to skip voting.`);
+                    populateVotingTable();
+                    // Disable the Skip button
+                    document.getElementById('skip-button').disabled = true;
+                } else {
+                    alert('Unable to submit skip: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting skip:', error);
+                alert('An error occurred while submitting your skip.');
+            });
+        }
+
+        function updateActivityLog() {
+            fetch(`/activity_log/${lobbyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const activityLogList = document.getElementById('activity-log');
+                    activityLogList.innerHTML = ''; // Clear existing entries
+
+                    data.activity_log.forEach(entry => {
+                        const listItem = document.createElement('li');
+                        listItem.innerText = `[${entry.time}] ${entry.message}`;
+                        activityLogList.appendChild(listItem);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching activity log:', error);
+                });
         }
     </script>
 </body>

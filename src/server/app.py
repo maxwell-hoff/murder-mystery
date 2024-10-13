@@ -145,11 +145,13 @@ def get_lobby(lobby_code):
         return jsonify({
             'player_names': lobby_data['player_names'],
             'ready_statuses': lobby_data['ready_statuses'],
-            'game_started': lobby_data['game_started'],   # Include game_started
-            'duration': lobby_data.get('duration'),       # Include game duration
-            'game_start_time': lobby_data.get('game_start_time'),  # Include game start time
-            'meeting_active': lobby_data.get('meeting_active', False),  # Include meeting status
-            'meeting_start_time': lobby_data.get('meeting_start_time')  # Include meeting start time
+            'game_started': lobby_data['game_started'],
+            'duration': lobby_data.get('duration'),
+            'game_start_time': lobby_data.get('game_start_time'),
+            'meeting_active': lobby_data.get('meeting_active', False),
+            'meeting_start_time': lobby_data.get('meeting_start_time'),
+            'has_voted': lobby_data.get('has_voted', {}),
+            'player_statuses': lobby_data.get('player_statuses', {})  # Include player statuses
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
@@ -219,9 +221,16 @@ def call_meeting(lobby_code):
         if lobby_data.get('meeting_active'):
             return jsonify({'error': 'A meeting is already in progress'}), 400
 
+        # After starting the meeting
         # Start the meeting
         lobby_data['meeting_active'] = True
         lobby_data['meeting_start_time'] = int(round(time.time() * 1000))
+
+        # Initialize votes and voting status
+        lobby_data['votes'] = {}  # Reset votes
+        lobby_data['has_voted'] = {}  # Track who has voted or skipped
+        for player in lobby_data['player_names']:
+            lobby_data['has_voted'][player] = False
 
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
@@ -232,6 +241,167 @@ def call_meeting(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/submit_vote/<lobby_code>', methods=['POST'])
+def submit_vote(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    voted_player = data.get('voted_player')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if not lobby_data.get('meeting_active'):
+            return jsonify({'error': 'No meeting in progress'}), 400
+
+        if lobby_data['has_voted'].get(player_name):
+            return jsonify({'error': 'Player has already voted'}), 400
+
+        # Check if player is alive
+        if lobby_data['player_statuses'].get(player_name) != 'alive':
+            return jsonify({'error': 'Dead players cannot vote'}), 400
+
+        # Record the vote
+        lobby_data['votes'][player_name] = voted_player
+        lobby_data['has_voted'][player_name] = True
+
+        # Check if all alive players have voted or skipped
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        if all(lobby_data['has_voted'].get(player, False) for player in alive_players):
+            # End the meeting
+            lobby_data['meeting_active'] = False
+            lobby_data['meeting_start_time'] = None
+            # Process votes
+            process_votes(lobby_data)
+            print(f"All players have voted or skipped in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis (moved outside the if block)
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Vote submitted'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/skip_vote/<lobby_code>', methods=['POST'])
+def skip_vote(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if not lobby_data.get('meeting_active'):
+            return jsonify({'error': 'No meeting in progress'}), 400
+
+        if lobby_data['has_voted'].get(player_name):
+            return jsonify({'error': 'Player has already voted or skipped'}), 400
+
+        # Check if player is alive
+        if lobby_data['player_statuses'].get(player_name) != 'alive':
+            return jsonify({'error': 'Dead players cannot vote'}), 400
+
+        # Record the skip
+        lobby_data['votes'][player_name] = 'skip'
+        lobby_data['has_voted'][player_name] = True
+
+        # Check if all alive players have voted or skipped
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        if all(lobby_data['has_voted'].get(player, False) for player in alive_players):
+            # End the meeting
+            lobby_data['meeting_active'] = False
+            lobby_data['meeting_start_time'] = None
+            # Process votes
+            process_votes(lobby_data)
+            print(f"All players have voted or skipped in lobby {lobby_code}.")
+
+        # Update the lobby data in Redis (moved outside the if block)
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Vote submitted'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/activity_log/<lobby_code>', methods=['GET'])
+def get_activity_log(lobby_code):
+    lobby_key = f"lobby:{lobby_code}"
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+        activity_log = lobby_data.get('activity_log', [])
+        return jsonify({'activity_log': activity_log})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+def process_votes(lobby_data):
+    votes = lobby_data['votes']
+    player_statuses = lobby_data['player_statuses']
+    game_start_time = lobby_data.get('game_start_time')
+    game_duration_minutes = lobby_data.get('duration')
+    game_duration_ms = game_duration_minutes * 60 * 1000  # Convert minutes to milliseconds
+
+    # Only consider votes from alive players
+    alive_players = [player for player, status in player_statuses.items() if status == 'alive']
+    alive_votes = {player: vote for player, vote in votes.items() if player_statuses[player] == 'alive'}
+    
+    # Count votes for each player
+    vote_counts = {}
+    for vote in alive_votes.values():
+        if vote != 'skip':
+            vote_counts[vote] = vote_counts.get(vote, 0) + 1
+
+    # Initialize message
+    message = ""
+
+    if not vote_counts:
+        # No votes cast
+        message = "No votes were cast."
+        print(message)
+    else:
+        # Find the player(s) with the highest votes
+        max_votes = max(vote_counts.values())
+        players_with_max_votes = [player for player, count in vote_counts.items() if count == max_votes]
+        
+        # Check for tie
+        if len(players_with_max_votes) > 1:
+            message = "Tie detected. No one is eliminated."
+            print(message)
+        else:
+            # Check if majority is achieved
+            if max_votes >= (len(alive_players) // 2) + 1:
+                # Eliminate the player
+                eliminated_player = players_with_max_votes[0]
+                player_statuses[eliminated_player] = 'dead'
+                message = f"Player {eliminated_player} has been eliminated."
+                print(message)
+            else:
+                message = "No majority. No one is eliminated."
+                print(message)
+
+    # Calculate the remaining game time
+    current_time_ms = int(round(time.time() * 1000))
+    elapsed_time_ms = current_time_ms - game_start_time
+    remaining_time_ms = game_duration_ms - elapsed_time_ms
+
+    # Ensure that the remaining time is not negative
+    remaining_time_ms = max(0, remaining_time_ms)
+
+    remaining_time_str = format_time_ms(remaining_time_ms)
+
+    # Append the message and time to the activity log
+    activity_entry = {
+        'time': remaining_time_str,
+        'message': message
+    }
+    lobby_data['activity_log'].append(activity_entry)
+
+def format_time_ms(milliseconds):
+    seconds = (milliseconds // 1000) % 60
+    minutes = (milliseconds // (1000 * 60)) % 60
+    formatted_time = f"{minutes}:{seconds:02}"
+    return formatted_time
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
