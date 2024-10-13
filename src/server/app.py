@@ -30,22 +30,27 @@ def index():
 @app.route('/create', methods=['POST'])
 def create_lobby():
     data = request.get_json()
-    rooms = data.get('rooms')  # Now expecting a list of room names
-    players = data.get('players')
+    rooms = data.get('rooms')
+    players = int(data.get('players'))
     player_name = data.get('player_name')
-    duration = data.get('duration')  # Get the game duration
+    duration = data.get('duration')
+
+    # Validate minimum number of players
+    if players < 4:
+        return jsonify({'error': 'The minimum number of players is 4.'}), 400
 
     # Generate a lobby code
     lobby_code = generate_lobby_code()
     # Create the lobby data
     lobby_data = {
-        'rooms': rooms,  # Store the room names list
-        'max_players': int(players),
+        'rooms': rooms,
+        'max_players': players,
         'player_names': [player_name],
-        'ready_statuses': [False],  # Initialize ready statuses with False
-        'game_started': False,      # New flag to indicate if the game has started
-        'duration': int(duration),  # Store the game duration in minutes
-        'game_start_time': None     # Will store the game start timestamp
+        'ready_statuses': [False],
+        'game_started': False,
+        'duration': int(duration),
+        'game_start_time': None,
+        'activity_log': []
     }
     # Store the lobby data in Redis
     r.set(f"lobby:{lobby_code}", json.dumps(lobby_data))
@@ -57,6 +62,7 @@ def create_lobby():
         'ready_statuses': lobby_data['ready_statuses'],
         'max_players': lobby_data['max_players']
     })
+
 
 @app.route('/join', methods=['POST'])
 def join_lobby():
@@ -96,7 +102,6 @@ def set_ready_status(lobby_code):
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
-        # Decode the bytes to string
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         # Update the ready status for the player
         for idx, name in enumerate(lobby_data['player_names']):
@@ -106,28 +111,24 @@ def set_ready_status(lobby_code):
                 break
         # Check if all players are ready
         if all(lobby_data['ready_statuses']) and len(lobby_data['player_names']) == lobby_data['max_players']:
+            # Ensure minimum players have joined
+            if len(lobby_data['player_names']) < 4:
+                return jsonify({'error': 'At least 4 players are required to start the game.'}), 400
             # Assign roles using game_logic
             roles = game_logic.assign_roles(lobby_data['player_names'])
             lobby_data['roles'] = roles  # Store roles in lobby data
-
             # Assign rooms using game_logic
             rooms = lobby_data['rooms']
             room_assignments = game_logic.assign_rooms(lobby_data['player_names'], rooms)
             lobby_data['room_assignments'] = room_assignments  # Store room assignments
-
-            # Record the game start time in milliseconds since epoch
+            # Record the game start time
             lobby_data['game_start_time'] = int(round(time.time() * 1000))
-
-            # Initialize meeting state
+            # Initialize meeting state and player statuses
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
-
-            # Update the lobby data in Redis
-            r.set(lobby_key, json.dumps(lobby_data))
-
+            lobby_data['player_statuses'] = {player: 'alive' for player in lobby_data['player_names']}
             lobby_data['game_started'] = True
             print(f"All players are ready. Game starting in lobby {lobby_code}. Roles and rooms assigned.")
-
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
         return jsonify({'message': 'Player ready status updated'})

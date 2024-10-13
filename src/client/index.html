@@ -58,6 +58,9 @@
                 <label for="players">Number of Players (max 10):</label>
                 <input type="number" id="players" name="players" min="1" max="10" required><br><br>
 
+                <label for="players">Number of Players (min 4, max 10):</label>
+                <input type="number" id="players" name="players" min="4" max="10" required><br><br>
+
                 <!-- Add Game Duration Dropdown -->
                 <label for="duration">Game Duration (minutes):</label>
                 <select id="duration" name="duration" required>
@@ -241,6 +244,12 @@
         function handleCreateLobby(event) {
             event.preventDefault();
             currentAction = 'create';
+            // Get the number of players
+            const numPlayers = parseInt(document.getElementById('players').value);
+            if (numPlayers < 4) {
+                alert('The minimum number of players is 4.');
+                return;
+            }
             // Hide the create lobby section
             document.getElementById('create-lobby-section').classList.add('hidden');
             // Get the number of rooms
