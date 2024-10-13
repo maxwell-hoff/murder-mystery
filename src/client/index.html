@@ -226,6 +226,7 @@
         let meetingDurationMs = 5 * 60 * 1000; // Meeting duration in milliseconds (5 minutes)
         let isMeetingActive = false;    // Flag to check if a meeting is active
         let hasVoted = false; // Flag to prevent multiple votes
+        let gameFeedback = ''; // Variable to store the selected feedback option
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -995,17 +996,45 @@
             clearInterval(meetingTimerInterval);
             clearInterval(pollingInterval);
 
-            // Optionally, you can display the message on the game screen
+            // Display the message, options, and buttons on the game screen
             const gameScreen = document.getElementById('game-screen');
             gameScreen.innerHTML = `
                 <h1>${message}</h1>
-                <button id="return-to-lobby-button">Return to Lobby</button>
-                <button id="return-to-home-button">Return to Home Screen</button>
+                <h2>Please rate the game difficulty:</h2>
+                <div id="feedback-options">
+                    <label>
+                        <input type="radio" name="difficulty" value="Too easy"> Too easy
+                    </label><br>
+                    <label>
+                        <input type="radio" name="difficulty" value="Just right"> Just right
+                    </label><br>
+                    <label>
+                        <input type="radio" name="difficulty" value="Too difficult"> Too difficult
+                    </label>
+                </div>
+                <button id="return-to-lobby-button" disabled>Return to Lobby</button>
+                <button id="return-to-home-button" disabled>Return to Home Screen</button>
             `;
 
             // Attach event listeners to the buttons
             document.getElementById('return-to-lobby-button').onclick = returnToLobby;
             document.getElementById('return-to-home-button').onclick = returnToHome;
+
+            // Attach event listener to the feedback options
+            const feedbackOptions = document.getElementsByName('difficulty');
+            for (let option of feedbackOptions) {
+                option.onchange = handleFeedbackSelection;
+            }
+        }
+
+        function handleFeedbackSelection() {
+            const selectedOption = document.querySelector('input[name="difficulty"]:checked');
+            if (selectedOption) {
+                gameFeedback = selectedOption.value;
+                // Enable the buttons
+                document.getElementById('return-to-lobby-button').disabled = false;
+                document.getElementById('return-to-home-button').disabled = false;
+            }
         }
 
         function gameTimeExpired() {
