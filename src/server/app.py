@@ -155,7 +155,9 @@ def get_lobby(lobby_code):
             'meeting_active': lobby_data.get('meeting_active', False),
             'meeting_start_time': lobby_data.get('meeting_start_time'),
             'has_voted': lobby_data.get('has_voted', {}),
-            'player_statuses': lobby_data.get('player_statuses', {})  # Include player statuses
+            'player_statuses': lobby_data.get('player_statuses', {}),  # Include player statuses
+            'game_over': lobby_data.get('game_over', False),
+            'winner': lobby_data.get('winner')
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
@@ -374,12 +376,37 @@ def meeting_expired(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/game_time_expired/<lobby_code>', methods=['POST'])
+def game_time_expired(lobby_code):
+    lobby_key = f"lobby:{lobby_code}"
+    lobby_data_json = r.get(lobby_key)
+
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if lobby_data.get('game_over'):
+            return jsonify({'message': 'Game already over'})
+
+        # Set game over and impostor wins
+        lobby_data['game_over'] = True
+        lobby_data['winner'] = 'impostor'
+        message = "Game time has run out. Impostor wins!"
+        print(message)
+        append_activity_log(lobby_data, message)
+
+        # Update the lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'Game time expired, impostor wins'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
-    game_start_time = lobby_data.get('game_start_time')
-    game_duration_minutes = lobby_data.get('duration')
-    game_duration_ms = game_duration_minutes * 60 * 1000  # Convert minutes to milliseconds
+    # game_start_time = lobby_data.get('game_start_time')
+    # game_duration_minutes = lobby_data.get('duration')
+    # game_duration_ms = game_duration_minutes * 60 * 1000  # Convert minutes to milliseconds
 
     # Only consider votes from alive players
     alive_players = [player for player, status in player_statuses.items() if status == 'alive']
@@ -420,6 +447,39 @@ def process_votes(lobby_data):
                 print(message)
 
     # Calculate the remaining game time
+    # current_time_ms = int(round(time.time() * 1000))
+    # elapsed_time_ms = current_time_ms - game_start_time
+    # remaining_time_ms = game_duration_ms - elapsed_time_ms
+
+    # Ensure that the remaining time is not negative
+    # remaining_time_ms = max(0, remaining_time_ms)
+
+    # remaining_time_str = format_time_ms(remaining_time_ms)
+
+    # # Append the message and time to the activity log
+    # activity_entry = {
+    #     'time': remaining_time_str,
+    #     'message': message
+    # }
+    # lobby_data['activity_log'].append(activity_entry)
+
+    # Append the message and time to the activity log
+    append_activity_log(lobby_data, message)
+
+    # Check for win conditions after processing votes
+    check_win_conditions(lobby_data)
+
+def format_time_ms(milliseconds):
+    seconds = (milliseconds // 1000) % 60
+    minutes = (milliseconds // (1000 * 60)) % 60
+    formatted_time = f"{minutes}:{seconds:02}"
+    return formatted_time
+
+def append_activity_log(lobby_data, message):
+    # Calculate the remaining game time
+    game_start_time = lobby_data.get('game_start_time')
+    game_duration_minutes = lobby_data.get('duration')
+    game_duration_ms = game_duration_minutes * 60 * 1000  # Convert minutes to milliseconds
     current_time_ms = int(round(time.time() * 1000))
     elapsed_time_ms = current_time_ms - game_start_time
     remaining_time_ms = game_duration_ms - elapsed_time_ms
@@ -436,11 +496,36 @@ def process_votes(lobby_data):
     }
     lobby_data['activity_log'].append(activity_entry)
 
-def format_time_ms(milliseconds):
-    seconds = (milliseconds // 1000) % 60
-    minutes = (milliseconds // (1000 * 60)) % 60
-    formatted_time = f"{minutes}:{seconds:02}"
-    return formatted_time
+
+def check_win_conditions(lobby_data):
+    player_statuses = lobby_data['player_statuses']
+    roles = lobby_data['roles']
+    alive_players = [player for player, status in player_statuses.items() if status == 'alive']
+    impostor = next((player for player, role in roles.items() if role == 'impostor'), None)
+
+    # Condition 1: If the impostor is eliminated, crew members win
+    if player_statuses.get(impostor) == 'dead':
+        lobby_data['game_over'] = True
+        lobby_data['winner'] = 'crew'
+        message = "The impostor has been eliminated. Crew members win!"
+        print(message)
+        append_activity_log(lobby_data, message)
+        return
+
+    # Condition 2: If the game gets down to 2 players with one being the impostor, impostor wins
+    if len(alive_players) == 2 and impostor in alive_players:
+        lobby_data['game_over'] = True
+        lobby_data['winner'] = 'impostor'
+        message = "Only two players remain, and the impostor is among them. Impostor wins!"
+        print(message)
+        append_activity_log(lobby_data, message)
+        return
+
+    # Condition 3: If the game time runs out, impostor wins
+    # This condition will be checked separately in the timer logic
+
+    # No win condition met yet
+    lobby_data['game_over'] = False
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

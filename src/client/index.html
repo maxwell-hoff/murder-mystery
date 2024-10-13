@@ -580,6 +580,16 @@
 
                         // Update the activity log
                         updateActivityLog();
+
+                        // Check if the game is over
+                        if (data.game_over) {
+                            clearInterval(pollingInterval);
+                            clearInterval(timerInterval);
+                            clearInterval(meetingTimerInterval);
+
+                            // Display the game over message
+                            displayGameOver(data.winner);
+                        }
                     });
             }, 2000);
         }
@@ -814,7 +824,10 @@
             if (remainingTime <= 0) {
                 clearInterval(timerInterval);
                 document.getElementById('timer-display').innerText = '00:00:00';
-                // Handle game over logic here if needed
+                
+                // Inform the backend that the game time has expired
+                gameTimeExpired();
+
                 return;
             }
 
@@ -969,6 +982,55 @@
                 .catch(error => {
                     console.error('Error fetching activity log:', error);
                 });
+        }
+
+        function displayGameOver(winner) {
+            let message = '';
+            if (winner === 'crew') {
+                message = 'The impostor has been eliminated. Crew members win!';
+            } else if (winner === 'impostor') {
+                message = 'Game over! The impostor wins!';
+            } else {
+                message = 'Game over!';
+            }
+
+            alert(message);
+
+            // Optionally, you can display the message on the game screen
+            const gameScreen = document.getElementById('game-screen');
+            gameScreen.innerHTML = `<h1>${message}</h1>`;
+
+            // Disable buttons
+            document.getElementById('call-meeting-button').disabled = true;
+            document.getElementById('toggle-role-button').disabled = true;
+            document.getElementById('toggle-room-button').disabled = true;
+            document.getElementById('skip-button').disabled = true;
+
+            // Stop timers
+            clearInterval(timerInterval);
+            clearInterval(meetingTimerInterval);
+            clearInterval(pollingInterval);
+        }
+
+        function gameTimeExpired() {
+            fetch(`/game_time_expired/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Game time expired, impostor wins') {
+                    // Handle game over state
+                    displayGameOver('impostor');
+                } else {
+                    console.error('Error processing game time expiration:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error processing game time expiration:', error);
+            });
         }
     </script>
 </body>
