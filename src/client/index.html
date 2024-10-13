@@ -155,24 +155,6 @@
                 <thead>
                     <tr>
                         <th>Players</th>
-                        <th>Vote</th>
-                    </tr>
-                </thead>
-                <tbody id="voting-table-body">
-                    <!-- Voting options will be generated dynamically -->
-                </tbody>
-            </table>
-        </div>
-
-        <!-- Voting Table Section (initially hidden) -->
-        <div id="voting-section" class="hidden">
-            <h2>Vote for a Player</h2>
-            <!-- Skip Button -->
-            <button id="skip-button" onclick="skipVote()">Skip</button>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Players</th>
                         <th>Status</th>
                         <th>Vote</th>
                     </tr>
@@ -489,7 +471,7 @@
                             document.getElementById('call-meeting-button').disabled = true;
                             document.getElementById('toggle-room-button').disabled = true;
                         }
-                        
+
                         if (data.game_started) {
                             if (!gameStartTime) {
                                 // Hide the lobby screen and show the game screen
