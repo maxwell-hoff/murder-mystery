@@ -7,6 +7,17 @@
     <title>Murder Mystery Game</title>
     <style>
         .hidden { display: none; }
+    
+        body {
+            background-color: black;
+            color: white;
+        }
+    
+        /* Apply to all elements to ensure text is white */
+        * {
+            color: white;
+        }
+    
         /* Additional styling for the initial screen */
         #initial-screen {
             text-align: center;
@@ -17,53 +28,115 @@
             font-size: 48px;
             margin-bottom: 40px;
         }
-
+    
         #initial-screen button {
             font-size: 24px;
             padding: 10px 20px;
             margin: 10px;
+            background-color: black;
+            color: white;
+            border: 1px solid white;
         }
-        .hidden { display: none; }
+    
         table {
             width: 50%;
             margin: 20px 0;
             border-collapse: collapse;
+            border: 1px solid white;
         }
+    
         th, td {
-            border: 1px solid black;
+            border: 1px solid white;
             padding: 8px;
             text-align: left;
         }
+    
         .error {
             color: red;
         }
+    
         #voting-section table {
             width: 100%;
         }
-
+    
         #voting-section th, #voting-section td {
             text-align: center;
         }
-
+    
         #voting-section button {
             padding: 5px 10px;
+            background-color: black;
+            color: white;
+            border: 1px solid white;
         }
-
+    
         /* Activity Log Styles */
         #activity-log-section {
             margin-top: 20px;
         }
-
+    
         #activity-log {
             list-style-type: none;
             padding: 0;
         }
-
+    
         #activity-log li {
-            background-color: #f9f9f9;
+            background-color: #333;
             margin-bottom: 5px;
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid white;
+        }
+    
+        /* Style inputs and selects */
+        input[type="text"], select {
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+        }
+    
+        /* Style the labels */
+        label {
+            color: white;
+        }
+    
+        /* Style the name popup */
+        #name-popup {
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+            padding: 20px;
+            text-align: center;
+        }
+    
+        /* Style room input fields */
+        #room-names-section input[type="text"] {
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+        }
+    
+        /* Style forms */
+        form {
+            color: white;
+        }
+
+        button:hover {
+            background-color: #555;
+            cursor: pointer;
+        }
+        /* Scrollbar Styles */
+        ::-webkit-scrollbar {
+            width: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #222;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 10px;
+            border: 2px solid #222;
         }
     </style>
 </head>
