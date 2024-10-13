@@ -1030,32 +1030,67 @@
         }
 
         function returnToLobby() {
-            // Hide the game screen
-            document.getElementById('game-screen').classList.add('hidden');
-            // Show the lobby screen
-            document.getElementById('lobby-screen').classList.remove('hidden');
+            // Send request to reset the lobby on the backend
+            fetch(`/reset_lobby/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'Lobby has been reset') {
+                    // Hide the game screen
+                    document.getElementById('game-screen').classList.add('hidden');
+                    // Show the lobby screen
+                    document.getElementById('lobby-screen').classList.remove('hidden');
 
-            // Reset necessary variables
-            resetGameVariables();
+                    // Reset necessary variables
+                    resetGameVariables();
 
-            // Start polling again to update the lobby status
-            startPolling();
+                    // Start polling again to update the lobby status
+                    startPolling();
+                } else {
+                    alert('Error resetting lobby: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting lobby:', error);
+                alert('An error occurred while resetting the lobby.');
+            });
         }
 
         function returnToHome() {
-            // Hide all screens
-            document.getElementById('game-screen').classList.add('hidden');
-            document.getElementById('lobby-screen').classList.add('hidden');
-            document.getElementById('create-join-section').classList.add('hidden');
+            // Send request to leave the lobby on the backend
+            fetch(`/leave_lobby/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide all screens
+                document.getElementById('game-screen').classList.add('hidden');
+                document.getElementById('lobby-screen').classList.add('hidden');
+                document.getElementById('create-join-section').classList.add('hidden');
 
-            // Show the initial screen
-            document.getElementById('initial-screen').classList.remove('hidden');
+                // Show the initial screen
+                document.getElementById('initial-screen').classList.remove('hidden');
 
-            // Reset all variables
-            resetAllVariables();
-
-            // Optionally, you may want to leave the lobby on the backend
-            // This would require implementing a 'leave lobby' endpoint on your backend
+                // Reset all variables
+                resetAllVariables();
+            })
+            .catch(error => {
+                console.error('Error leaving lobby:', error);
+                alert('An error occurred while leaving the lobby.');
+            });
         }
 
         function resetGameVariables() {

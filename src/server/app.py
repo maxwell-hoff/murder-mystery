@@ -403,6 +403,77 @@ def game_time_expired(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/leave_lobby/<lobby_code>', methods=['POST'])
+def leave_lobby(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        if player_name in lobby_data['player_names']:
+            idx = lobby_data['player_names'].index(player_name)
+            # Remove the player from the player_names and ready_statuses
+            lobby_data['player_names'].pop(idx)
+            lobby_data['ready_statuses'].pop(idx)
+
+            # Remove player from player_statuses if game has started
+            if lobby_data.get('player_statuses'):
+                lobby_data['player_statuses'].pop(player_name, None)
+            # Remove player role if assigned
+            if lobby_data.get('roles'):
+                lobby_data['roles'].pop(player_name, None)
+            # Remove room assignment
+            if lobby_data.get('room_assignments'):
+                lobby_data['room_assignments'].pop(player_name, None)
+            # If the game hasn't started yet, check if lobby is empty
+            if not lobby_data['player_names']:
+                # Delete the lobby
+                r.delete(lobby_key)
+                return jsonify({'message': 'Player left and lobby deleted because it was empty'})
+            else:
+                # Update the lobby data in Redis
+                r.set(lobby_key, json.dumps(lobby_data))
+                return jsonify({'message': 'Player left the lobby'})
+        else:
+            return jsonify({'error': 'Player not found in lobby'}), 404
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/reset_lobby/<lobby_code>', methods=['POST'])
+def reset_lobby(lobby_code):
+    lobby_key = f"lobby:{lobby_code}"
+    data = request.get_json()
+    player_name = data.get('player_name')
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        # Reset game-specific data while keeping the player list intact
+        lobby_data['ready_statuses'] = [False] * len(lobby_data['player_names'])
+        lobby_data['game_started'] = False
+        lobby_data['game_start_time'] = None
+        lobby_data['meeting_active'] = False
+        lobby_data['meeting_start_time'] = None
+        lobby_data['player_statuses'] = {}
+        lobby_data['roles'] = {}
+        lobby_data['room_assignments'] = {}
+        lobby_data['activity_log'] = []
+        lobby_data['votes'] = {}
+        lobby_data['has_voted'] = {}
+        lobby_data['game_over'] = False
+        lobby_data['winner'] = None
+        lobby_data['game_over_message'] = None
+
+        # Update the lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+        return jsonify({'message': 'Lobby has been reset'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
