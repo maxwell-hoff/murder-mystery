@@ -787,15 +787,16 @@
 
         // Function to populate the voting table
         function populateVotingTable() {
-            const votingTableBody = document.getElementById('voting-table-body');
-            votingTableBody.innerHTML = ''; // Clear existing entries
-
             fetch(`/lobby/${lobbyCode}`)
                 .then(response => response.json())
                 .then(data => {
                     const playerNames = data.player_names;
                     const hasVotedData = data.has_voted || {};
                     const playerStatuses = data.player_statuses || {};
+                    const votingTableBody = document.getElementById('voting-table-body');
+
+                    // Create a DocumentFragment to build the new table content
+                    const fragment = document.createDocumentFragment();
 
                     playerNames.forEach(player => {
                         const row = document.createElement('tr');
@@ -831,10 +832,14 @@
                         }
 
                         row.appendChild(voteCell);
-                        votingTableBody.appendChild(row);
+                        fragment.appendChild(row);
                     });
 
-                    // Disable the Skip button if the player has voted or skipped or is dead
+                    // Replace the table body content in one operation
+                    votingTableBody.innerHTML = '';
+                    votingTableBody.appendChild(fragment);
+
+                    // Disable the Skip button if the player has voted or is dead
                     if (hasVoted || playerStatuses[playerName] !== 'alive') {
                         document.getElementById('skip-button').disabled = true;
                     } else {
