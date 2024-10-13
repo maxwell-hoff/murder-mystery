@@ -474,7 +474,7 @@
                         maxPlayers = parseInt(data.max_players); // Ensure it's an integer
                         document.getElementById("lobby-code").innerText = data.lobby_code;
                         generatePlayerList(maxPlayers);
-                        updatePlayerList(data.player_names, data.ready_statuses);
+                        updatePlayerList(data.player_names, data.ready_statuses, {}, false);
                         startPolling();
                     })
                     .catch(error => {
@@ -505,6 +505,12 @@
 
         // Function to update the player list and ready statuses
         function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}, gameStarted) {
+            // Create a mapping of player names to ready statuses
+            const readyStatusMap = {};
+            for (let i = 0; i < playerNames.length; i++) {
+                readyStatusMap[playerNames[i]] = readyStatuses[i];
+            }
+
             for (let i = 0; i < maxPlayers; i++) {
                 const playerNameInSlot = playerNames[i] || 'Waiting for player...';
                 document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
@@ -516,8 +522,8 @@
                     statusCell.innerText = playerStatus ? playerStatus : '';
                 } else {
                     // In the lobby, show 'Ready' or blank
-                    const readyStatus = readyStatuses[i];
-                    statusCell.innerText = readyStatus === true ? 'Ready' : '';
+                    const readyStatus = readyStatusMap[playerNameInSlot];
+                    statusCell.innerText = readyStatus ? 'Ready' : '';
                 }
             }
         }
@@ -1152,13 +1158,7 @@
             clearInterval(timerInterval);
             clearInterval(meetingTimerInterval);
 
-            // Reset the Ready button
-            document.getElementById("ready-button").disabled = false;
-
-            // Clear activity log
-            document.getElementById('activity-log').innerHTML = '';
-
-            // Reset game screen content
+            // Reset game screen content first
             document.getElementById('game-screen').innerHTML = `
                 <h1>Game Screen</h1>
                 <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
@@ -1194,6 +1194,15 @@
                     </ul>
                 </div>
             `;
+
+            // Now, reset the activity log
+            document.getElementById('activity-log').innerHTML = '';
+
+            // Reset the Ready button if it exists
+            const readyButton = document.getElementById("ready-button");
+            if (readyButton) {
+                readyButton.disabled = false;
+            }
         }
 
         function resetAllVariables() {
