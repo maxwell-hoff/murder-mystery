@@ -45,7 +45,7 @@ def create_lobby():
         'ready_statuses': [False],  # Initialize ready statuses with False
         'game_started': False,      # New flag to indicate if the game has started
         'duration': int(duration),  # Store the game duration in minutes
-        'game_start_time': None     # Will store the game start timestamp
+        'game_start_time': None,     # Will store the game start timestamp
         'activity_log': []  # Initialize the activity log
     }
     # Store the lobby data in Redis
