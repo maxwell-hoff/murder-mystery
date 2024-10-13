@@ -341,6 +341,8 @@ def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
     game_start_time = lobby_data.get('game_start_time')
+    game_duration_minutes = lobby_data.get('duration')
+    game_duration_ms = game_duration_minutes * 60 * 1000  # Convert minutes to milliseconds
 
     # Only consider votes from alive players
     alive_players = [player for player, status in player_statuses.items() if status == 'alive']
@@ -380,23 +382,27 @@ def process_votes(lobby_data):
                 message = "No majority. No one is eliminated."
                 print(message)
 
-    # Calculate the game time
+    # Calculate the remaining game time
     current_time_ms = int(round(time.time() * 1000))
     elapsed_time_ms = current_time_ms - game_start_time
-    elapsed_time_str = format_time_ms(elapsed_time_ms)
+    remaining_time_ms = game_duration_ms - elapsed_time_ms
+
+    # Ensure that the remaining time is not negative
+    remaining_time_ms = max(0, remaining_time_ms)
+
+    remaining_time_str = format_time_ms(remaining_time_ms)
 
     # Append the message and time to the activity log
     activity_entry = {
-        'time': elapsed_time_str,
+        'time': remaining_time_str,
         'message': message
     }
     lobby_data['activity_log'].append(activity_entry)
 
 def format_time_ms(milliseconds):
-    seconds = milliseconds // 1000
-    minutes = seconds // 60
-    seconds = seconds % 60
-    formatted_time = f"{minutes:02}:{seconds:02}"
+    seconds = (milliseconds // 1000) % 60
+    minutes = (milliseconds // (1000 * 60)) % 60
+    formatted_time = f"{minutes}:{seconds:02}"
     return formatted_time
 
 if __name__ == '__main__':
