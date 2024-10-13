@@ -587,8 +587,8 @@
                             clearInterval(timerInterval);
                             clearInterval(meetingTimerInterval);
 
-                            // Display the game over message
-                            displayGameOver(data.winner);
+                            // Display the game over message using the message from the backend
+                            displayGameOver(data.game_over_message);
                         }
                     });
             }, 2000);
@@ -984,13 +984,9 @@
                 });
         }
 
-        function displayGameOver(winner) {
-            let message = '';
-            if (winner === 'crew') {
-                message = 'The impostor has been eliminated. Crew members win!';
-            } else if (winner === 'impostor') {
-                message = 'Game over! The impostor wins!';
-            } else {
+        function displayGameOver(message) {
+            if (!message) {
+                // Fallback message if none provided
                 message = 'Game over!';
             }
 

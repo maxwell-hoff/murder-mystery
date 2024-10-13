@@ -155,9 +155,10 @@ def get_lobby(lobby_code):
             'meeting_active': lobby_data.get('meeting_active', False),
             'meeting_start_time': lobby_data.get('meeting_start_time'),
             'has_voted': lobby_data.get('has_voted', {}),
-            'player_statuses': lobby_data.get('player_statuses', {}),  # Include player statuses
+            'player_statuses': lobby_data.get('player_statuses', {}),
             'game_over': lobby_data.get('game_over', False),
-            'winner': lobby_data.get('winner')
+            'winner': lobby_data.get('winner'),
+            'game_over_message': lobby_data.get('game_over_message')  # Include the message
         })
     else:
         return jsonify({'error': 'Lobby not found'}), 404
@@ -391,6 +392,7 @@ def game_time_expired(lobby_code):
         lobby_data['game_over'] = True
         lobby_data['winner'] = 'impostor'
         message = "Game time has run out. Impostor wins!"
+        lobby_data['game_over_message'] = message  # Store the message
         print(message)
         append_activity_log(lobby_data, message)
 
@@ -508,6 +510,7 @@ def check_win_conditions(lobby_data):
         lobby_data['game_over'] = True
         lobby_data['winner'] = 'crew'
         message = "The impostor has been eliminated. Crew members win!"
+        lobby_data['game_over_message'] = message  # Store the message
         print(message)
         append_activity_log(lobby_data, message)
         return
@@ -517,6 +520,7 @@ def check_win_conditions(lobby_data):
         lobby_data['game_over'] = True
         lobby_data['winner'] = 'impostor'
         message = "Only two players remain, and the impostor is among them. Impostor wins!"
+        lobby_data['game_over_message'] = message  # Store the message
         print(message)
         append_activity_log(lobby_data, message)
         return
@@ -526,6 +530,7 @@ def check_win_conditions(lobby_data):
 
     # No win condition met yet
     lobby_data['game_over'] = False
+    lobby_data['game_over_message'] = None  # Clear any previous message
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
