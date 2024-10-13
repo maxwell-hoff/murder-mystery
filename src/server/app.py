@@ -39,6 +39,10 @@ def create_lobby():
     if players < 4:
         return jsonify({'error': 'The minimum number of players is 4.'}), 400
 
+    # Validate number of rooms
+    if not (3 <= len(rooms) <= 10):
+        return jsonify({'error': 'The number of rooms must be between 3 and 9.'}), 400
+
     # Generate a lobby code
     lobby_code = generate_lobby_code()
     # Create the lobby data
