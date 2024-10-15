@@ -1,13 +1,13 @@
 import os
 import random
 import string
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, render_template
 import redis
 import json
 import game_logic
 import time
 
-app = Flask(__name__, static_folder='../client/static', static_url_path='/static')
+app = Flask(__name__, static_folder='../client/static', template_folder='../client', static_url_path='/static')
 
 # Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
@@ -25,7 +25,7 @@ def generate_lobby_code():
 
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    return render_template('index.html')
 
 @app.route('/create', methods=['POST'])
 def create_lobby():

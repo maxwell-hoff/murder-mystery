@@ -157,7 +157,7 @@
     </div> -->
     <!-- Initial Screen -->
     <div id="initial-screen">
-        <img id="main-title-image" src="/static/images/title.jpg" alt="Murder Mystery">
+        <img id="main-title-image" src="{{ url_for('static', filename='images/title.jpg') }}" alt="Murder Mystery">
         <div id="button-container">
             <button onclick="showCreateLobby()">Start a Game</button>
             <button onclick="showJoinLobby()">Join Game</button>
