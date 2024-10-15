@@ -7,7 +7,7 @@ import json
 import game_logic
 import time
 
-app = Flask(__name__, static_folder='../client')
+app = Flask(__name__, static_folder='../client', static_url_path='/static')
 
 # Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
