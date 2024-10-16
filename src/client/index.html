@@ -362,6 +362,7 @@
         let isMeetingActive = false;    // Flag to check if a meeting is active
         let hasVoted = false; // Flag to prevent multiple votes
         let gameFeedback = ''; // Variable to store the selected feedback option
+        let roomInterval;  // To hold the interval ID for room assignment updates
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -771,6 +772,8 @@
             .then(data => {
                 if (data.room) {
                     playerRoom = data.room;
+                    // Update the room display
+                    document.getElementById('room-display').innerText = `You are in: ${playerRoom}`;
                 } else {
                     console.error('Error fetching room:', data.error);
                     alert('Error fetching room: ' + data.error);
@@ -826,6 +829,14 @@
             timerInterval = setInterval(() => {
                 updateTimerDisplay();
             }, 10);
+
+            // Fetch and display the player's room immediately
+            fetchPlayerRoom();
+
+            // Start fetching room assignments every 10 seconds
+            roomInterval = setInterval(() => {
+                fetchPlayerRoom();
+            }, 10000); // 10000 milliseconds = 10 seconds
         }
 
         // Function to pause the game timer
@@ -1292,6 +1303,7 @@
             // Clear intervals if not already cleared
             clearInterval(timerInterval);
             clearInterval(meetingTimerInterval);
+            clearInterval(roomInterval);
 
             // Reset game screen content first
             document.getElementById('game-screen').innerHTML = `

@@ -105,6 +105,10 @@ def set_ready_status(lobby_code):
     player_name = data.get('player_name')
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
+    # Record the game start time
+    lobby_data['game_start_time'] = int(round(time.time() * 1000))
+    lobby_data['last_room_assignment_time'] = lobby_data['game_start_time']  # Initialize last room assignment time
+    
     if lobby_data_json:
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         # Update the ready status for the player
