@@ -9,7 +9,7 @@
         .hidden { display: none; }
     
         body {
-            background-color: rgb(2, 2, 2);
+            background-color: rgb(0, 0, 0);
             color: white;
         }
     
@@ -89,7 +89,7 @@
     
         #voting-section button {
             padding: 5px 10px;
-            background-color: rgb(2, 2, 2);
+            background-color: rgb(0, 0, 0);
             color: white;
             border: 1px solid white;
         }
@@ -113,7 +113,7 @@
     
         /* Style inputs and selects */
         input[type="text"], select {
-            background-color: rgb(2, 2, 2);
+            background-color: rgb(0, 0, 0);
             color: white;
             border: 1px solid white;
         }
@@ -125,7 +125,7 @@
     
         /* Style the name popup */
         #name-popup {
-            background-color: rgb(2, 2, 2);
+            background-color: rgb(0, 0, 0);
             color: white;
             border: 1px solid white;
             padding: 20px;
@@ -134,7 +134,7 @@
     
         /* Style room input fields */
         #room-names-section input[type="text"] {
-            background-color: rgb(2, 2, 2);
+            background-color: rgb(0, 0, 0);
             color: white;
             border: 1px solid white;
         }
@@ -145,6 +145,7 @@
         }
 
         button {
+            border-radius: 15px; /* Adjust this value for more or less rounding */
             background-color: #222; /* Dark grey background */
             color: white;
             border: 1px solid white;
@@ -177,17 +178,37 @@
             display: block;
             margin: 0 auto;
         }
+
+        #main-title-video {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
     <!-- Initial Screen -->
-    <div id="initial-screen">
+    <!-- <div id="initial-screen">
         <img id="main-title-image" src="{{ url_for('static', filename='images/title.v5.jpg') }}" alt="Murder Mystery">
         <div id="button-container">
             <button onclick="showCreateLobby()">Start a Game</button>
             <button onclick="showJoinLobby()">Join Game</button>
         </div>
+    </div> -->
+
+    <div id="initial-screen">
+        <video id="main-title-video" autoplay loop muted playsinline>
+            <source src="{{ url_for('static', filename='images/intro_video.v1.mp4') }}" type="video/mp4">
+            <!-- Fallback message if the video format isn't supported -->
+            Your browser does not support the video tag.
+        </video>
+        <div id="button-container">
+            <button onclick="showCreateLobby()">Start a Game</button>
+            <button onclick="showJoinLobby()">Join Game</button>
+        </div>
     </div>
+    
 
     <!-- Create/Join Section (initially hidden) -->
     <div id="create-join-section" class="hidden">
