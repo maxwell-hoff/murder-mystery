@@ -426,6 +426,7 @@
         let hasVoted = false; // Flag to prevent multiple votes
         let gameFeedback = ''; // Variable to store the selected feedback option
         let roomInterval;  // To hold the interval ID for room assignment updates
+        let hasAlertedMeeting = false; // New variable to track meeting alerts
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -757,32 +758,36 @@
                                 gameStartTime = parseInt(data.game_start_time);
                                 startGameTimer();
                             }
+
+                            // Meeting detection logic
                             if (data.meeting_active) {
                                 if (!isMeetingActive) {
                                     pauseGameTimer();
                                     meetingStartTime = parseInt(data.meeting_start_time);
                                     startMeetingTimer();
                                     isMeetingActive = true;
+
+                                    // **Show alert if not already alerted**
+                                    if (!hasAlertedMeeting) {
+                                        alert('A meeting has been called!');
+                                        hasAlertedMeeting = true;
+                                    }
                                 } else {
                                     // Update voting table
                                     populateVotingTable();
                                 }
                             } else {
                                 if (isMeetingActive) {
-                                    if (!data.meeting_active) {
-                                        // Meeting has ended
-                                        clearInterval(meetingTimerInterval);
-                                        document.getElementById('meeting-timer-section').classList.add('hidden');
-                                        document.getElementById('voting-section').classList.add('hidden');
-                                        hasVoted = false;
-                                        isMeetingActive = false;
-                                        resumeGameTimer();
-                                        // Update the activity log
-                                        updateActivityLog();
-                                    } else {
-                                        // Update voting table
-                                        populateVotingTable();
-                                    }
+                                    // Meeting has ended
+                                    clearInterval(meetingTimerInterval);
+                                    document.getElementById('meeting-timer-section').classList.add('hidden');
+                                    document.getElementById('voting-section').classList.add('hidden');
+                                    hasVoted = false;
+                                    isMeetingActive = false;
+                                    hasAlertedMeeting = false; // **Reset the alert flag**
+                                    resumeGameTimer();
+                                    // Update the activity log
+                                    updateActivityLog();
                                 }
                             }
                         }
