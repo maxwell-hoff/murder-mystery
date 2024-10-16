@@ -882,25 +882,30 @@
         }
 
         function startRoomCountdown() {
+            // If countdown is already running, do not reset it
+            if (countdownInterval) {
+                return;
+            }
+
             // Display the current room
             document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
             document.getElementById('room-display').classList.remove('hidden');
             document.getElementById('toggle-room-button').innerText = 'Hide Room';
             roomRevealed = true;
 
-            // Fetch the next room assignment
+            // Fetch the next room assignment and start the countdown
             fetchNextRoomAssignment().then(() => {
                 // Display the next room
                 document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
                 document.getElementById('next-room-display').classList.remove('hidden');
 
                 // Start the countdown
-                countdownTime = 60; // Reset countdown time to 60 seconds
                 updateCountdownDisplay();
                 countdownInterval = setInterval(() => {
                     countdownTime--;
                     if (countdownTime <= 0) {
                         clearInterval(countdownInterval);
+                        countdownInterval = null;
                         // Switch to the next room
                         playerRoom = nextRoom;
                         // Hide the countdown and next room display
@@ -931,6 +936,10 @@
             .then(data => {
                 if (data.next_room) {
                     nextRoom = data.next_room;
+                    // Set countdownTime based on server-provided time
+                    countdownTime = Math.ceil(data.time_until_next_assignment / 1000); // Convert ms to seconds
+                    // Ensure countdownTime is at least 0
+                    countdownTime = Math.max(countdownTime, 0);
                 } else {
                     console.error('Error fetching next room:', data.error);
                     alert('Error fetching next room: ' + data.error);
@@ -967,6 +976,7 @@
             // Clear the countdown interval if it's running
             if (countdownInterval) {
                 clearInterval(countdownInterval);
+                countdownInterval = null;
             }
         }
 

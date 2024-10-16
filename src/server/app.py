@@ -554,7 +554,14 @@ def get_next_room(lobby_code):
 
         next_room = lobby_data['next_room_assignments'].get(player_name)
         if next_room:
-            return jsonify({'next_room': next_room})
+            # Calculate time until next room assignment
+            current_time = int(round(time.time() * 1000))
+            next_assignment_time = lobby_data['last_room_assignment_time'] + 60 * 1000  # 60 seconds interval
+            time_until_next_assignment = max(0, next_assignment_time - current_time)
+            return jsonify({
+                'next_room': next_room,
+                'time_until_next_assignment': time_until_next_assignment
+            })
         else:
             return jsonify({'error': 'Next room assignment not found'}), 404
     else:
