@@ -105,10 +105,7 @@ def set_ready_status(lobby_code):
     player_name = data.get('player_name')
     lobby_key = f"lobby:{lobby_code}"
     lobby_data_json = r.get(lobby_key)
-    # Record the game start time
-    lobby_data['game_start_time'] = int(round(time.time() * 1000))
-    lobby_data['last_room_assignment_time'] = lobby_data['game_start_time']  # Initialize last room assignment time
-    
+
     if lobby_data_json:
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
         # Update the ready status for the player
@@ -131,6 +128,8 @@ def set_ready_status(lobby_code):
             lobby_data['room_assignments'] = room_assignments  # Store room assignments
             # Record the game start time
             lobby_data['game_start_time'] = int(round(time.time() * 1000))
+            # Initialize last room assignment time
+            lobby_data['last_room_assignment_time'] = lobby_data['game_start_time']
             # Initialize meeting state and player statuses
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
@@ -205,7 +204,15 @@ def get_room(lobby_code):
     lobby_data_json = r.get(lobby_key)
     if lobby_data_json:
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
         if lobby_data.get('room_assignments'):
+            # Update room assignments if needed
+            rooms_reassigned = update_room_assignments_if_needed(lobby_data)
+            if rooms_reassigned:
+                # Update lobby data in Redis
+                r.set(lobby_key, json.dumps(lobby_data))
+                print(f"Rooms reassigned in lobby {lobby_code} at {lobby_data['last_room_assignment_time']}")
+
             room = lobby_data['room_assignments'].get(player_name)
             if room:
                 return jsonify({'room': room})
@@ -549,6 +556,17 @@ def process_votes(lobby_data):
 
     # Check for win conditions after processing votes
     check_win_conditions(lobby_data)
+
+def update_room_assignments_if_needed(lobby_data):
+    last_assignment_time = lobby_data.get('last_room_assignment_time', lobby_data['game_start_time'])
+    current_time = int(round(time.time() * 1000))
+    if current_time - last_assignment_time >= 10000:  # 10 seconds in milliseconds
+        # Reassign rooms
+        room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
+        lobby_data['room_assignments'] = room_assignments
+        lobby_data['last_room_assignment_time'] = current_time
+        return True  # Indicate that rooms were reassigned
+    return False  # No reassignment needed
 
 def format_time_ms(milliseconds):
     seconds = (milliseconds // 1000) % 60
