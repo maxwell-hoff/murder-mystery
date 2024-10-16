@@ -22,8 +22,13 @@
         #initial-screen {
             text-align: center;
             margin-top: 50px;
+            padding: 0 20px;
         }
         
+        #button-container {
+            margin-top: 20px;
+        }
+
         #initial-screen h1 {
             font-size: 48px;
             margin-bottom: 40px;
@@ -36,6 +41,25 @@
             background-color: black;
             color: white;
             border: 1px solid white;
+        }
+
+        /* Media Queries for Smaller Screens */
+        @media (max-width: 600px) {
+            #initial-screen h1 {
+                font-size: 32px;
+                margin-bottom: 20px;
+            }
+
+            #initial-screen button {
+                font-size: 18px;
+                padding: 8px 16px;
+                margin: 5px 0;
+            }
+
+            #button-container {
+                flex-direction: column;
+                align-items: center;
+            }
         }
     
         table {
@@ -146,15 +170,16 @@
             border-radius: 10px;
             border: 2px solid #222;
         }
+
+        #main-title-image {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
-    <!-- Initial Screen -->
-    <!-- <div id="initial-screen">
-        <h1>Murder Mystery</h1>
-        <button onclick="showCreateLobby()">Start a Game</button>
-        <button onclick="showJoinLobby()">Join Game</button>
-    </div> -->
     <!-- Initial Screen -->
     <div id="initial-screen">
         <img id="main-title-image" src="{{ url_for('static', filename='images/title.jpg') }}" alt="Murder Mystery">
