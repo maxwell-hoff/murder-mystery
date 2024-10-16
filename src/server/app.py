@@ -239,6 +239,9 @@ def get_room(lobby_code):
 def call_meeting(lobby_code):
     data = request.get_json()
     player_name = data.get('player_name')
+    body_found = data.get('body_found')
+    dead_player = data.get('dead_player')
+    room_found = data.get('room_found')
     lobby_key = f"lobby:{lobby_code}"
 
     lobby_data_json = r.get(lobby_key)
@@ -251,7 +254,6 @@ def call_meeting(lobby_code):
         if lobby_data.get('meeting_active'):
             return jsonify({'error': 'A meeting is already in progress'}), 400
 
-        # After starting the meeting
         # Start the meeting
         lobby_data['meeting_active'] = True
         lobby_data['meeting_start_time'] = int(round(time.time() * 1000))
@@ -261,6 +263,26 @@ def call_meeting(lobby_code):
         lobby_data['has_voted'] = {}  # Track who has voted or skipped
         for player in lobby_data['player_names']:
             lobby_data['has_voted'][player] = False
+
+        # Handle body found logic
+        if body_found:
+            # Validate dead player and room
+            if dead_player not in lobby_data['player_names']:
+                return jsonify({'error': 'Invalid dead player selected'}), 400
+            if lobby_data['player_statuses'].get(dead_player) != 'alive':
+                return jsonify({'error': 'Selected player is already dead'}), 400
+            if room_found not in lobby_data['rooms']:
+                return jsonify({'error': 'Invalid room selected'}), 400
+
+            # Mark the player as dead
+            lobby_data['player_statuses'][dead_player] = 'dead'
+
+            # Add to activity log
+            message = f"{dead_player} was found dead in {room_found}"
+            append_activity_log(lobby_data, message)
+        else:
+            # No body found; proceed normally
+            pass
 
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
@@ -498,6 +520,18 @@ def reset_lobby(lobby_code):
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
         return jsonify({'message': 'Lobby has been reset'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
+@app.route('/get_rooms/<lobby_code>', methods=['GET'])
+def get_rooms(lobby_code):
+    lobby_key = f"lobby:{lobby_code}"
+    lobby_data_json = r.get(lobby_key)
+
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+        rooms = lobby_data.get('rooms', [])
+        return jsonify({'rooms': rooms})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 

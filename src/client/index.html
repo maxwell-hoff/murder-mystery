@@ -185,6 +185,40 @@
             display: block;
             margin: 0 auto;
         }
+
+        /* Modal Styles */
+        #meeting-options-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #111;
+            border: 1px solid white;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        #meeting-options-modal button {
+            margin: 5px;
+        }
+
+        /* Modal Styles */
+        #select-dead-player-modal,
+        #select-room-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #111;
+            border: 1px solid white;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        #select-dead-player-modal button,
+        #select-room-modal button {
+            margin: 5px;
+        }
     </style>
 </head>
 <body>
@@ -341,6 +375,35 @@
         </form>
     </div>
 
+    <!-- Meeting Options Modal -->
+    <div id="meeting-options-modal" class="hidden">
+        <h2>Call Meeting</h2>
+        <p>Select an option:</p>
+        <button id="body-found-button">Body Found</button>
+        <button id="no-body-found-button">No Body Found</button>
+        <button id="cancel-meeting-button">Cancel</button>
+    </div>
+
+    <!-- Select Dead Player Modal -->
+    <div id="select-dead-player-modal" class="hidden">
+        <h2>Select the Player You Found Dead</h2>
+        <select id="dead-player-select">
+            <!-- Options will be populated dynamically -->
+        </select>
+        <button id="dead-player-next-button">Next</button>
+        <button id="dead-player-cancel-button">Cancel</button>
+    </div>
+
+
+    <!-- Select Room Modal -->
+    <div id="select-room-modal" class="hidden">
+        <h2>Select the Room Where You Found the Body</h2>
+        <select id="room-select">
+            <!-- Options will be populated dynamically -->
+        </select>
+        <button id="room-select-submit-button">Report Body</button>
+        <button id="room-select-cancel-button">Cancel</button>
+    </div>
     <script>
         let maxPlayers = 0;  // Store the maximum number of players
         let currentAction = '';  // To track if we're creating or joining a lobby
@@ -951,35 +1014,52 @@
 
         // Function to handle "Call Meeting" button click
         function callMeeting() {
-            // Prompt the player to select "Body Found" or "No Body Found"
-            const bodyFound = confirm("Did you find a body? Click 'OK' for Yes, 'Cancel' for No.");
+            // Display the meeting options modal
+            document.getElementById('meeting-options-modal').classList.remove('hidden');
+        }
 
-            if (bodyFound) {
-                // Player found a body; proceed to select the dead player and room
-                selectDeadPlayerAndRoom();
-            } else {
-                // No body found; start meeting normally
-                fetch(`/call_meeting/${lobbyCode}`, {
-                    method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        player_name: playerName,
-                        body_found: false
-                    })
+        // Event listeners for the modal buttons
+        document.getElementById('body-found-button').addEventListener('click', () => {
+            // Close the modal
+            document.getElementById('meeting-options-modal').classList.add('hidden');
+            // Proceed to select dead player and room
+            selectDeadPlayerAndRoom();
+        });
+
+        document.getElementById('no-body-found-button').addEventListener('click', () => {
+            // Close the modal
+            document.getElementById('meeting-options-modal').classList.add('hidden');
+            // Start meeting without body found
+            startMeetingWithoutBody();
+        });
+
+        document.getElementById('cancel-meeting-button').addEventListener('click', () => {
+            // Close the modal
+            document.getElementById('meeting-options-modal').classList.add('hidden');
+            // Do nothing
+        });
+
+        function startMeetingWithoutBody() {
+            fetch(`/call_meeting/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName,
+                    body_found: false
                 })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.message !== 'Meeting started') {
-                        alert('Unable to start meeting: ' + data.error);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error calling meeting:', error);
-                    alert('An error occurred while calling the meeting.');
-                });
-            }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message !== 'Meeting started') {
+                    alert('Unable to start meeting: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error calling meeting:', error);
+                alert('An error occurred while calling the meeting.');
+            });
         }
 
         // Modify updateTimerDisplay to check if the game timer should be paused
@@ -1404,32 +1484,52 @@
                 // Get alive players excluding the reporter
                 const alivePlayers = playerNames.filter(name => playerStatuses[name] === 'alive' && name !== playerName);
 
-                // Create a selection prompt for the dead player
-                let deadPlayer = prompt(`Select the player you found dead:\n${alivePlayers.join('\n')}`);
-
-                if (deadPlayer && alivePlayers.includes(deadPlayer)) {
-                    // Proceed to select the room
-                    selectRoom(deadPlayer);
-                } else {
-                    alert('Invalid player selected. Meeting will continue as normal.');
+                if (alivePlayers.length === 0) {
+                    alert('No other alive players to report.');
                     // Start meeting without body found
-                    fetch(`/call_meeting/${lobbyCode}`, {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            player_name: playerName,
-                            body_found: false
-                        })
-                    });
+                    startMeetingWithoutBody();
+                    return;
                 }
+
+                // Populate the select element
+                const deadPlayerSelect = document.getElementById('dead-player-select');
+                deadPlayerSelect.innerHTML = ''; // Clear previous options
+
+                alivePlayers.forEach(player => {
+                    const option = document.createElement('option');
+                    option.value = player;
+                    option.text = player;
+                    deadPlayerSelect.appendChild(option);
+                });
+
+                // Display the modal
+                document.getElementById('select-dead-player-modal').classList.remove('hidden');
             })
             .catch(error => {
                 console.error('Error fetching player list:', error);
                 alert('An error occurred while fetching the player list.');
             });
         }
+
+        // Event listeners for the dead player modal
+        document.getElementById('dead-player-next-button').addEventListener('click', () => {
+            const deadPlayer = document.getElementById('dead-player-select').value;
+            if (deadPlayer) {
+                // Close the modal
+                document.getElementById('select-dead-player-modal').classList.add('hidden');
+                // Proceed to select the room
+                selectRoom(deadPlayer);
+            } else {
+                alert('Please select a player.');
+            }
+        });
+
+        document.getElementById('dead-player-cancel-button').addEventListener('click', () => {
+            // Close the modal
+            document.getElementById('select-dead-player-modal').classList.add('hidden');
+            // Start meeting without body found
+            startMeetingWithoutBody();
+        });
 
         function selectRoom(deadPlayer) {
             // Fetch the list of rooms
@@ -1438,32 +1538,55 @@
             .then(data => {
                 const rooms = data.rooms;
 
-                // Create a selection prompt for the room
-                let roomFound = prompt(`Select the room where you found ${deadPlayer}:\n${rooms.join('\n')}`);
-
-                if (roomFound && rooms.includes(roomFound)) {
-                    // Report the body
-                    reportBody(deadPlayer, roomFound);
-                } else {
-                    alert('Invalid room selected. Meeting will continue as normal.');
+                if (rooms.length === 0) {
+                    alert('No rooms available.');
                     // Start meeting without body found
-                    fetch(`/call_meeting/${lobbyCode}`, {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            player_name: playerName,
-                            body_found: false
-                        })
-                    });
+                    startMeetingWithoutBody();
+                    return;
                 }
+
+                // Populate the room select element
+                const roomSelect = document.getElementById('room-select');
+                roomSelect.innerHTML = ''; // Clear previous options
+
+                rooms.forEach(room => {
+                    const option = document.createElement('option');
+                    option.value = room;
+                    option.text = room;
+                    roomSelect.appendChild(option);
+                });
+
+                // Store the selected dead player for later use
+                window.selectedDeadPlayer = deadPlayer;
+
+                // Display the modal
+                document.getElementById('select-room-modal').classList.remove('hidden');
             })
             .catch(error => {
                 console.error('Error fetching rooms:', error);
                 alert('An error occurred while fetching the rooms.');
             });
         }
+
+        // Event listeners for the room selection modal
+        document.getElementById('room-select-submit-button').addEventListener('click', () => {
+            const roomFound = document.getElementById('room-select').value;
+            if (roomFound) {
+                // Close the modal
+                document.getElementById('select-room-modal').classList.add('hidden');
+                // Report the body
+                reportBody(window.selectedDeadPlayer, roomFound);
+            } else {
+                alert('Please select a room.');
+            }
+        });
+
+        document.getElementById('room-select-cancel-button').addEventListener('click', () => {
+            // Close the modal
+            document.getElementById('select-room-modal').classList.add('hidden');
+            // Start meeting without body found
+            startMeetingWithoutBody();
+        });
 
         function reportBody(deadPlayer, roomFound) {
             // Send the information to the backend
