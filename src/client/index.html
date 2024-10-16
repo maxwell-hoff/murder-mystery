@@ -951,28 +951,35 @@
 
         // Function to handle "Call Meeting" button click
         function callMeeting() {
-            fetch(`/call_meeting/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
+            // Prompt the player to select "Body Found" or "No Body Found"
+            const bodyFound = confirm("Did you find a body? Click 'OK' for Yes, 'Cancel' for No.");
+
+            if (bodyFound) {
+                // Player found a body; proceed to select the dead player and room
+                selectDeadPlayerAndRoom();
+            } else {
+                // No body found; start meeting normally
+                fetch(`/call_meeting/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName,
+                        body_found: false
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'Meeting started') {
-                    // Meeting successfully started
-                    // Do nothing here; the state will be handled in startPolling()
-                } else {
-                    alert('Unable to start meeting: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error calling meeting:', error);
-                alert('An error occurred while calling the meeting.');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message !== 'Meeting started') {
+                        alert('Unable to start meeting: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calling meeting:', error);
+                    alert('An error occurred while calling the meeting.');
+                });
+            }
         }
 
         // Modify updateTimerDisplay to check if the game timer should be paused
@@ -1044,7 +1051,7 @@
                         } else if (hasVoted) {
                             voteCell.innerText = 'Vote submitted';
                         } else if (hasVotedData[playerName]) {
-                            voteCell.innerText = `${player} has voted`;
+                            voteCell.innerText = 'You have voted';
                         } else {
                             const voteButton = document.createElement('button');
                             voteButton.innerText = 'Vote';
@@ -1385,6 +1392,104 @@
             // Reset the Ready button
             document.getElementById("ready-button").disabled = false;
         }
+
+        function selectDeadPlayerAndRoom() {
+            // Fetch the list of alive players (excluding the current player)
+            fetch(`/lobby/${lobbyCode}`)
+            .then(response => response.json())
+            .then(data => {
+                const playerNames = data.player_names;
+                const playerStatuses = data.player_statuses;
+
+                // Get alive players excluding the reporter
+                const alivePlayers = playerNames.filter(name => playerStatuses[name] === 'alive' && name !== playerName);
+
+                // Create a selection prompt for the dead player
+                let deadPlayer = prompt(`Select the player you found dead:\n${alivePlayers.join('\n')}`);
+
+                if (deadPlayer && alivePlayers.includes(deadPlayer)) {
+                    // Proceed to select the room
+                    selectRoom(deadPlayer);
+                } else {
+                    alert('Invalid player selected. Meeting will continue as normal.');
+                    // Start meeting without body found
+                    fetch(`/call_meeting/${lobbyCode}`, {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            player_name: playerName,
+                            body_found: false
+                        })
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching player list:', error);
+                alert('An error occurred while fetching the player list.');
+            });
+        }
+
+        function selectRoom(deadPlayer) {
+            // Fetch the list of rooms
+            fetch(`/get_rooms/${lobbyCode}`)
+            .then(response => response.json())
+            .then(data => {
+                const rooms = data.rooms;
+
+                // Create a selection prompt for the room
+                let roomFound = prompt(`Select the room where you found ${deadPlayer}:\n${rooms.join('\n')}`);
+
+                if (roomFound && rooms.includes(roomFound)) {
+                    // Report the body
+                    reportBody(deadPlayer, roomFound);
+                } else {
+                    alert('Invalid room selected. Meeting will continue as normal.');
+                    // Start meeting without body found
+                    fetch(`/call_meeting/${lobbyCode}`, {
+                        method: "POST",
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            player_name: playerName,
+                            body_found: false
+                        })
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching rooms:', error);
+                alert('An error occurred while fetching the rooms.');
+            });
+        }
+
+        function reportBody(deadPlayer, roomFound) {
+            // Send the information to the backend
+            fetch(`/call_meeting/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName,
+                    body_found: true,
+                    dead_player: deadPlayer,
+                    room_found: roomFound
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message !== 'Meeting started') {
+                    alert('Unable to start meeting: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error reporting body:', error);
+                alert('An error occurred while reporting the body.');
+            });
+        }      
     </script>
 </body>
 </html>
