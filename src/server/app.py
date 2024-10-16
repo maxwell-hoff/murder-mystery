@@ -130,6 +130,18 @@ def set_ready_status(lobby_code):
             lobby_data['game_start_time'] = int(round(time.time() * 1000))
             # Initialize last room assignment time
             lobby_data['last_room_assignment_time'] = lobby_data['game_start_time']
+            # **Calculate reassignment times**
+            game_duration_ms = lobby_data['duration'] * 60 * 1000  # Convert minutes to milliseconds
+            num_reassignments = 3  # Number of times players will be reassigned
+            # Calculate reassignment intervals
+            reassignment_intervals = game_duration_ms / (num_reassignments + 1)
+            reassignment_times = []
+            for i in range(1, num_reassignments + 1):
+                reassignment_time = lobby_data['game_start_time'] + int(i * reassignment_intervals)
+                reassignment_times.append(reassignment_time)
+            lobby_data['reassignment_times'] = reassignment_times
+            # Initialize next reassignment index
+            lobby_data['next_reassignment_index'] = 0
             # Initialize meeting state and player statuses
             lobby_data['meeting_active'] = False
             lobby_data['meeting_start_time'] = None
@@ -558,13 +570,17 @@ def process_votes(lobby_data):
     check_win_conditions(lobby_data)
 
 def update_room_assignments_if_needed(lobby_data):
-    last_assignment_time = lobby_data.get('last_room_assignment_time', lobby_data['game_start_time'])
     current_time = int(round(time.time() * 1000))
-    if current_time - last_assignment_time >= 10000:  # 10 seconds in milliseconds
+    next_index = lobby_data.get('next_reassignment_index', 0)
+    reassignment_times = lobby_data.get('reassignment_times', [])
+    if next_index < len(reassignment_times) and current_time >= reassignment_times[next_index]:
         # Reassign rooms
         room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
         lobby_data['room_assignments'] = room_assignments
         lobby_data['last_room_assignment_time'] = current_time
+        # Increment next reassignment index
+        lobby_data['next_reassignment_index'] = next_index + 1
+        print(f"Rooms reassigned at {current_time} in lobby {lobby_data.get('lobby_code', '')}")
         return True  # Indicate that rooms were reassigned
     return False  # No reassignment needed
 

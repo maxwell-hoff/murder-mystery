@@ -771,9 +771,17 @@
             .then(response => response.json())
             .then(data => {
                 if (data.room) {
-                    playerRoom = data.room;
+                    if (playerRoom !== data.room) {
+                        // Player has been reassigned
+                        playerRoom = data.room;
+                        alert(`You have been reassigned to: ${playerRoom}`);
+                    } else {
+                        playerRoom = data.room;
+                    }
                     // Update the room display
-                    document.getElementById('room-display').innerText = `You are in: ${playerRoom}`;
+                    if (roomRevealed) {
+                        document.getElementById('room-display').innerText = `You are in: ${playerRoom}`;
+                    }
                 } else {
                     console.error('Error fetching room:', data.error);
                     alert('Error fetching room: ' + data.error);
@@ -833,10 +841,10 @@
             // Fetch and display the player's room immediately
             fetchPlayerRoom();
 
-            // Start fetching room assignments every 10 seconds
+            // Start fetching room assignments every 5 seconds
             roomInterval = setInterval(() => {
                 fetchPlayerRoom();
-            }, 10000); // 10000 milliseconds = 10 seconds
+            }, 5000); // 5000 milliseconds = 5 seconds
         }
 
         // Function to pause the game timer
