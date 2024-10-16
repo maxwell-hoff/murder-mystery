@@ -337,6 +337,8 @@
         <h2>Room Assignment:</h2>
         <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
         <p id="room-display" class="hidden"></p>
+        <p id="countdown-display" class="hidden"></p>
+        <p id="next-room-display" class="hidden"></p>
 
         <!-- Voting Table Section (initially hidden) -->
         <div id="voting-section" class="hidden">
@@ -427,6 +429,9 @@
         let gameFeedback = ''; // Variable to store the selected feedback option
         let roomInterval;  // To hold the interval ID for room assignment updates
         let hasAlertedMeeting = false; // New variable to track meeting alerts
+        let countdownInterval; // Interval ID for the countdown
+        let countdownTime = 60; // Countdown time in seconds
+        let nextRoom = ''; // Store the next room assignment
 
         function fetchPlayerRole() {
             // Fetch the player's role from the backend
@@ -864,16 +869,82 @@
         function toggleRoom() {
             if (!roomRevealed) {
                 if (!playerRoom) {
-                    // Fetch the room if it hasn't been fetched yet
+                    // Fetch the current room if not already fetched
                     fetchPlayerRoom().then(() => {
-                        revealRoom();
+                        startRoomCountdown();
                     });
                 } else {
-                    revealRoom();
+                    startRoomCountdown();
                 }
             } else {
                 hideRoom();
             }
+        }
+
+        function startRoomCountdown() {
+            // Display the current room
+            document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
+            document.getElementById('room-display').classList.remove('hidden');
+            document.getElementById('toggle-room-button').innerText = 'Hide Room';
+            roomRevealed = true;
+
+            // Fetch the next room assignment
+            fetchNextRoomAssignment().then(() => {
+                // Display the next room
+                document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
+                document.getElementById('next-room-display').classList.remove('hidden');
+
+                // Start the countdown
+                countdownTime = 60; // Reset countdown time to 60 seconds
+                updateCountdownDisplay();
+                countdownInterval = setInterval(() => {
+                    countdownTime--;
+                    if (countdownTime <= 0) {
+                        clearInterval(countdownInterval);
+                        // Switch to the next room
+                        playerRoom = nextRoom;
+                        // Hide the countdown and next room display
+                        document.getElementById('countdown-display').classList.add('hidden');
+                        document.getElementById('next-room-display').classList.add('hidden');
+                        // Update the room display
+                        document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
+                        // Optionally, fetch a new next room assignment
+                        fetchNextRoomAssignment();
+                    } else {
+                        updateCountdownDisplay();
+                    }
+                }, 1000); // Update every second
+            });
+        }
+
+        function fetchNextRoomAssignment() {
+            return fetch(`/get_next_room/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.next_room) {
+                    nextRoom = data.next_room;
+                } else {
+                    console.error('Error fetching next room:', data.error);
+                    alert('Error fetching next room: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching next room:', error);
+                alert('An error occurred while fetching your next room.');
+            });
+        }
+
+        function updateCountdownDisplay() {
+            document.getElementById('countdown-display').innerText = `Time left until room switch: ${countdownTime} seconds`;
+            document.getElementById('countdown-display').classList.remove('hidden');
         }
 
         function revealRoom() {
@@ -886,8 +957,17 @@
         function hideRoom() {
             document.getElementById('room-display').innerText = '';
             document.getElementById('room-display').classList.add('hidden');
+            document.getElementById('countdown-display').innerText = '';
+            document.getElementById('countdown-display').classList.add('hidden');
+            document.getElementById('next-room-display').innerText = '';
+            document.getElementById('next-room-display').classList.add('hidden');
             document.getElementById('toggle-room-button').innerText = 'Reveal Room';
             roomRevealed = false;
+
+            // Clear the countdown interval if it's running
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
         }
 
         function startGameTimer() {

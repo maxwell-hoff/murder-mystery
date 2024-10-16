@@ -535,6 +535,31 @@ def get_rooms(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/get_next_room/<lobby_code>', methods=['POST'])
+def get_next_room(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        # Update room assignments if needed
+        rooms_reassigned = update_room_assignments_if_needed(lobby_data)
+        if rooms_reassigned:
+            # Update lobby data in Redis
+            r.set(lobby_key, json.dumps(lobby_data))
+            print(f"Rooms reassigned in lobby {lobby_code} at {lobby_data['last_room_assignment_time']}")
+
+        next_room = lobby_data['next_room_assignments'].get(player_name)
+        if next_room:
+            return jsonify({'next_room': next_room})
+        else:
+            return jsonify({'error': 'Next room assignment not found'}), 404
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
@@ -580,23 +605,6 @@ def process_votes(lobby_data):
                 message = "No majority. No one is eliminated."
                 print(message)
 
-    # Calculate the remaining game time
-    # current_time_ms = int(round(time.time() * 1000))
-    # elapsed_time_ms = current_time_ms - game_start_time
-    # remaining_time_ms = game_duration_ms - elapsed_time_ms
-
-    # Ensure that the remaining time is not negative
-    # remaining_time_ms = max(0, remaining_time_ms)
-
-    # remaining_time_str = format_time_ms(remaining_time_ms)
-
-    # # Append the message and time to the activity log
-    # activity_entry = {
-    #     'time': remaining_time_str,
-    #     'message': message
-    # }
-    # lobby_data['activity_log'].append(activity_entry)
-
     # Append the message and time to the activity log
     append_activity_log(lobby_data, message)
 
@@ -605,15 +613,16 @@ def process_votes(lobby_data):
 
 def update_room_assignments_if_needed(lobby_data):
     current_time = int(round(time.time() * 1000))
-    next_index = lobby_data.get('next_reassignment_index', 0)
-    reassignment_times = lobby_data.get('reassignment_times', [])
-    if next_index < len(reassignment_times) and current_time >= reassignment_times[next_index]:
+    last_assignment_time = lobby_data.get('last_room_assignment_time', 0)
+    # Reassign rooms every minute
+    if current_time - last_assignment_time >= 60 * 1000:
         # Reassign rooms
         room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
         lobby_data['room_assignments'] = room_assignments
         lobby_data['last_room_assignment_time'] = current_time
-        # Increment next reassignment index
-        lobby_data['next_reassignment_index'] = next_index + 1
+        # Assign next rooms
+        next_room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
+        lobby_data['next_room_assignments'] = next_room_assignments
         print(f"Rooms reassigned at {current_time} in lobby {lobby_data.get('lobby_code', '')}")
         return True  # Indicate that rooms were reassigned
     return False  # No reassignment needed
