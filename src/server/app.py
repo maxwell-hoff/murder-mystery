@@ -149,6 +149,8 @@ def set_ready_status(lobby_code):
             lobby_data['game_started'] = True
             # Initialize reassignments when the game starts
             lobby_data['reassignments'] = {player: 0 for player in lobby_data['player_names']}
+            # Initialize last kill time
+            lobby_data['last_kill_time'] = 0
             print(f"All players are ready. Game starting in lobby {lobby_code}. Roles and rooms assigned.")
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
@@ -575,6 +577,58 @@ def get_next_room(lobby_code):
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
+@app.route('/mark_dead/<lobby_code>', methods=['POST'])
+def mark_yourself_dead(lobby_code):
+    data = request.get_json()
+    player_name = data.get('player_name')
+    lobby_key = f"lobby:{lobby_code}"
+
+    lobby_data_json = r.get(lobby_key)
+    if lobby_data_json:
+        lobby_data = json.loads(lobby_data_json.decode('utf-8'))
+
+        # Check if game has started
+        if not lobby_data.get('game_started'):
+            return jsonify({'error': 'Game has not started yet'}), 400
+
+        # Check if player is already dead
+        if lobby_data['player_statuses'].get(player_name) != 'alive':
+            return jsonify({'error': 'You are already dead'}), 400
+
+        # Check if player is the impostor
+        if lobby_data['roles'].get(player_name) == 'impostor':
+            return jsonify({'error': 'Impostor cannot mark themselves as dead'}), 400
+
+        # Get the timestamp of the last kill
+        last_kill_time = lobby_data.get('last_kill_time', 0)
+        current_time = int(round(time.time() * 1000))
+
+        # Check if 30 seconds have passed since the last kill
+        if current_time - last_kill_time < 30 * 1000:
+            return jsonify({'error': 'Impostor has recently killed someone and cannot kill you. Quickly call a meeting to expose the impostor!'}), 400
+
+        # Mark the player as dead
+        lobby_data['player_statuses'][player_name] = 'dead'
+        # Update the last kill time
+        lobby_data['last_kill_time'] = current_time
+
+        # Update lobby data in Redis
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        # Optionally, add to activity log
+        message = f"{player_name} has been killed."
+        append_activity_log(lobby_data, message)
+
+        # Check win conditions
+        check_win_conditions(lobby_data)
+
+        # Update lobby data again after win condition check
+        r.set(lobby_key, json.dumps(lobby_data))
+
+        return jsonify({'message': 'You are now marked as dead'})
+    else:
+        return jsonify({'error': 'Lobby not found'}), 404
+
 def process_votes(lobby_data):
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
@@ -721,27 +775,23 @@ def check_win_conditions(lobby_data):
         lobby_data['game_over'] = True
         lobby_data['winner'] = 'crew'
         message = "The impostor has been eliminated. Crew members win!"
-        lobby_data['game_over_message'] = message  # Store the message
-        print(message)
+        lobby_data['game_over_message'] = message
         append_activity_log(lobby_data, message)
         return
 
-    # Condition 2: If the game gets down to 2 players with one being the impostor, impostor wins
-    if len(alive_players) == 2 and impostor in alive_players:
+    # Condition 2: If the number of alive crew members is less than or equal to impostor
+    alive_crew = [player for player in alive_players if roles[player] != 'impostor']
+    if len(alive_crew) <= 1:
         lobby_data['game_over'] = True
         lobby_data['winner'] = 'impostor'
-        message = "Only two players remain, and the impostor is among them. Impostor wins!"
-        lobby_data['game_over_message'] = message  # Store the message
-        print(message)
+        message = "Impostor has eliminated enough crew members. Impostor wins!"
+        lobby_data['game_over_message'] = message
         append_activity_log(lobby_data, message)
         return
-
-    # Condition 3: If the game time runs out, impostor wins
-    # This condition will be checked separately in the timer logic
 
     # No win condition met yet
     lobby_data['game_over'] = False
-    lobby_data['game_over_message'] = None  # Clear any previous message
+    lobby_data['game_over_message'] = None
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

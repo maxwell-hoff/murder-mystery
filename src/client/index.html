@@ -222,15 +222,6 @@
     </style>
 </head>
 <body>
-    <!-- Initial Screen -->
-    <!-- <div id="initial-screen">
-        <img id="main-title-image" src="{{ url_for('static', filename='images/title.v5.jpg') }}" alt="Murder Mystery">
-        <div id="button-container">
-            <button onclick="showCreateLobby()">Start a Game</button>
-            <button onclick="showJoinLobby()">Join Game</button>
-        </div>
-    </div> -->
-
     <div id="initial-screen">
         <video id="main-title-video" autoplay loop muted playsinline webkit-playsinline>
             <source src="{{ url_for('static', filename='images/intro_video.v6.mp4') }}" type="video/mp4">
@@ -320,8 +311,9 @@
         <!-- Display the Game Timer -->
         <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
 
-        <!-- Call Meeting Button -->
+        <!-- Call Meeting/Mark Dead Button -->
         <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
+        <button id="mark-dead-button" onclick="markYourselfDead()">Mark Yourself Dead</button>
 
         <!-- Meeting Timer (initially hidden) -->
         <div id="meeting-timer-section" class="hidden">
@@ -358,6 +350,7 @@
                 </tbody>
             </table>
         </div>
+        
         <!-- Activity Log Section -->
         <div id="activity-log-section">
             <h2>Activity Log</h2>
@@ -479,6 +472,11 @@
             document.getElementById('role-display').classList.remove('hidden');
             document.getElementById('toggle-role-button').innerText = 'Hide Role';
             roleRevealed = true;
+
+            // Disable the "Mark Yourself Dead" button if the player is the impostor
+            if (playerRole === 'impostor') {
+                document.getElementById('mark-dead-button').disabled = true;
+            }
         }
 
         function hideRole() {
@@ -1141,6 +1139,34 @@
             document.getElementById('meeting-options-modal').classList.add('hidden');
             // Do nothing
         });
+
+        function markYourselfDead() {
+            // Send a request to the backend to mark yourself dead
+            fetch(`/mark_dead/${lobbyCode}`, {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    player_name: playerName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === 'You are now marked as dead') {
+                    alert('You have been marked as dead.');
+                    // Update your status in the UI
+                    // Optionally, disable the button
+                    document.getElementById('mark-dead-button').disabled = true;
+                } else if (data.error) {
+                    alert(data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error marking yourself dead:', error);
+                alert('An error occurred while processing your request.');
+            });
+        }
 
         function startMeetingWithoutBody() {
             fetch(`/call_meeting/${lobbyCode}`, {
