@@ -233,7 +233,7 @@
 
     <div id="initial-screen">
         <video id="main-title-video" autoplay loop muted playsinline webkit-playsinline>
-            <source src="{{ url_for('static', filename='images/intro_video.v5.mp4') }}" type="video/mp4">
+            <source src="{{ url_for('static', filename='images/intro_video.v6.mp4') }}" type="video/mp4">
             <!-- Fallback message if the video format isn't supported -->
             Your browser does not support the video tag.
         </video>
@@ -875,8 +875,8 @@
         }
 
         function startRoomCountdown() {
-            if (!nextRoom) {
-                return; // No next room assigned
+            if (!nextRoom || countdownTime <= 0) {
+                return; // No next room assigned or countdown time invalid
             }
 
             // Display the next room
@@ -932,7 +932,9 @@
                     // Ensure countdownTime is at least 0
                     countdownTime = Math.max(countdownTime, 0);
                     // Start the countdown
-                    startRoomCountdown();
+                    if (roomRevealed) {
+                        startRoomCountdown();
+                    }
                 } else {
                     // No new room assigned
                     nextRoom = null;
@@ -964,7 +966,7 @@
             roomRevealed = true;
 
             // If a next room is already assigned, start the countdown
-            if (nextRoom) {
+            if (nextRoom && countdownTime > 0) {
                 startRoomCountdown();
             }
         }

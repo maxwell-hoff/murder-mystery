@@ -223,12 +223,15 @@ def get_room(lobby_code):
         room = lobby_data['room_assignments'].get(player_name)
 
         # Check if it's time to switch to the next room
-        if player_name in lobby_data.get('next_room_assignments', {}):
+        current_time = int(round(time.time() * 1000))
+        switch_time = lobby_data.get('next_room_switch_times', {}).get(player_name)
+        if switch_time and current_time >= switch_time:
             # Switch to next room
             room = lobby_data['next_room_assignments'][player_name]
             lobby_data['room_assignments'][player_name] = room
-            # Remove next room assignment
+            # Remove next room assignment and switch time
             del lobby_data['next_room_assignments'][player_name]
+            del lobby_data['next_room_switch_times'][player_name]
             # Update lobby data in Redis
             r.set(lobby_key, json.dumps(lobby_data))
 
@@ -558,11 +561,13 @@ def get_next_room(lobby_code):
         # Check if the player has a next room assigned
         next_room = lobby_data.get('next_room_assignments', {}).get(player_name)
         if next_room:
-            # Since reassignment happens immediately on the client, set time until switch
-            time_until_switch = 10  # Let's assume 10 seconds countdown
+            # Calculate time until switch
+            current_time = int(round(time.time() * 1000))
+            switch_time = lobby_data['next_room_switch_times'][player_name]
+            time_until_switch = max(0, switch_time - current_time)
             return jsonify({
                 'next_room': next_room,
-                'time_until_switch': time_until_switch * 1000  # Convert to milliseconds
+                'time_until_switch': time_until_switch  # Time in milliseconds
             })
         else:
             # No next room assigned
@@ -661,15 +666,17 @@ def update_room_assignments_if_needed(lobby_data):
             lobby_data['next_room_assignments'] = {}
         lobby_data['next_room_assignments'][player_to_reassign] = new_room
 
+        # Set the switch time for the player (e.g., 60 seconds from now)
+        switch_time = current_time + 60 * 1000  # 60 seconds in milliseconds
+        if 'next_room_switch_times' not in lobby_data:
+            lobby_data['next_room_switch_times'] = {}
+        lobby_data['next_room_switch_times'][player_to_reassign] = switch_time
+
         # Increment the player's reassignment count
         lobby_data['reassignments'][player_to_reassign] += 1
 
         # Update the last reassignment time
         lobby_data['last_reassignment_time'] = current_time
-
-        # Optionally, add to activity log
-        message = f"{player_to_reassign} will be reassigned to a new room soon."
-        append_activity_log(lobby_data, message)
 
         return True  # Indicate that a player was reassigned
 
