@@ -868,39 +868,24 @@
 
         function toggleRoom() {
             if (!roomRevealed) {
-                if (!playerRoom) {
-                    // Fetch the current room if not already fetched
-                    fetchPlayerRoom().then(() => {
-                        startRoomCountdown();
-                    });
-                } else {
-                    startRoomCountdown();
-                }
+                revealRoom();
             } else {
                 hideRoom();
             }
         }
 
         function startRoomCountdown() {
-            // If countdown is already running, do not reset it
-            if (countdownInterval) {
-                return;
+            if (!nextRoom) {
+                return; // No next room assigned
             }
 
-            // Display the current room
-            document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
-            document.getElementById('room-display').classList.remove('hidden');
-            document.getElementById('toggle-room-button').innerText = 'Hide Room';
-            roomRevealed = true;
+            // Display the next room
+            document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
+            document.getElementById('next-room-display').classList.remove('hidden');
 
-            // Fetch the next room assignment and start the countdown
-            fetchNextRoomAssignment().then(() => {
-                // Display the next room
-                document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
-                document.getElementById('next-room-display').classList.remove('hidden');
-
-                // Start the countdown
-                updateCountdownDisplay();
+            // Start the countdown
+            updateCountdownDisplay();
+            if (!countdownInterval) {
                 countdownInterval = setInterval(() => {
                     countdownTime--;
                     if (countdownTime <= 0) {
@@ -908,19 +893,25 @@
                         countdownInterval = null;
                         // Switch to the next room
                         playerRoom = nextRoom;
+                        nextRoom = null;
+                        // Update the room display
+                        if (roomRevealed) {
+                            document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
+                        }
                         // Hide the countdown and next room display
                         document.getElementById('countdown-display').classList.add('hidden');
                         document.getElementById('next-room-display').classList.add('hidden');
-                        // Update the room display
-                        document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
-                        // Optionally, fetch a new next room assignment
-                        fetchNextRoomAssignment();
                     } else {
                         updateCountdownDisplay();
                     }
                 }, 1000); // Update every second
-            });
+            }
         }
+
+        // Start polling for next room assignments every 10 seconds
+        setInterval(() => {
+            fetchNextRoomAssignment();
+        }, 10000); // 10000 milliseconds = 10 seconds
 
         function fetchNextRoomAssignment() {
             return fetch(`/get_next_room/${lobbyCode}`, {
@@ -937,17 +928,27 @@
                 if (data.next_room) {
                     nextRoom = data.next_room;
                     // Set countdownTime based on server-provided time
-                    countdownTime = Math.ceil(data.time_until_next_assignment / 1000); // Convert ms to seconds
+                    countdownTime = Math.ceil(data.time_until_switch / 1000); // Convert ms to seconds
                     // Ensure countdownTime is at least 0
                     countdownTime = Math.max(countdownTime, 0);
+                    // Start the countdown
+                    startRoomCountdown();
                 } else {
-                    console.error('Error fetching next room:', data.error);
-                    alert('Error fetching next room: ' + data.error);
+                    // No new room assigned
+                    nextRoom = null;
+                    // Hide the countdown and next room display
+                    document.getElementById('countdown-display').classList.add('hidden');
+                    document.getElementById('next-room-display').classList.add('hidden');
+                    // Clear countdown if running
+                    if (countdownInterval) {
+                        clearInterval(countdownInterval);
+                        countdownInterval = null;
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error fetching next room:', error);
-                alert('An error occurred while fetching your next room.');
+                // Handle error appropriately
             });
         }
 
@@ -957,10 +958,15 @@
         }
 
         function revealRoom() {
-            document.getElementById('room-display').innerText = `Your assigned room is: ${playerRoom}`;
+            document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
             document.getElementById('room-display').classList.remove('hidden');
             document.getElementById('toggle-room-button').innerText = 'Hide Room';
             roomRevealed = true;
+
+            // If a next room is already assigned, start the countdown
+            if (nextRoom) {
+                startRoomCountdown();
+            }
         }
 
         function hideRoom() {

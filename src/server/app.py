@@ -147,6 +147,8 @@ def set_ready_status(lobby_code):
             lobby_data['meeting_start_time'] = None
             lobby_data['player_statuses'] = {player: 'alive' for player in lobby_data['player_names']}
             lobby_data['game_started'] = True
+            # Initialize reassignments when the game starts
+            lobby_data['reassignments'] = {player: 0 for player in lobby_data['player_names']}
             print(f"All players are ready. Game starting in lobby {lobby_code}. Roles and rooms assigned.")
         # Update the lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
@@ -217,21 +219,23 @@ def get_room(lobby_code):
     if lobby_data_json:
         lobby_data = json.loads(lobby_data_json.decode('utf-8'))
 
-        if lobby_data.get('room_assignments'):
-            # Update room assignments if needed
-            rooms_reassigned = update_room_assignments_if_needed(lobby_data)
-            if rooms_reassigned:
-                # Update lobby data in Redis
-                r.set(lobby_key, json.dumps(lobby_data))
-                print(f"Rooms reassigned in lobby {lobby_code} at {lobby_data['last_room_assignment_time']}")
+        # Fetch current room
+        room = lobby_data['room_assignments'].get(player_name)
 
-            room = lobby_data['room_assignments'].get(player_name)
-            if room:
-                return jsonify({'room': room})
-            else:
-                return jsonify({'error': 'Player not found in lobby'}), 404
+        # Check if it's time to switch to the next room
+        if player_name in lobby_data.get('next_room_assignments', {}):
+            # Switch to next room
+            room = lobby_data['next_room_assignments'][player_name]
+            lobby_data['room_assignments'][player_name] = room
+            # Remove next room assignment
+            del lobby_data['next_room_assignments'][player_name]
+            # Update lobby data in Redis
+            r.set(lobby_key, json.dumps(lobby_data))
+
+        if room:
+            return jsonify({'room': room})
         else:
-            return jsonify({'error': 'Rooms not assigned yet'}), 400
+            return jsonify({'error': 'Player not found in lobby'}), 404
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
@@ -550,20 +554,19 @@ def get_next_room(lobby_code):
         if rooms_reassigned:
             # Update lobby data in Redis
             r.set(lobby_key, json.dumps(lobby_data))
-            print(f"Rooms reassigned in lobby {lobby_code} at {lobby_data['last_room_assignment_time']}")
 
-        next_room = lobby_data['next_room_assignments'].get(player_name)
+        # Check if the player has a next room assigned
+        next_room = lobby_data.get('next_room_assignments', {}).get(player_name)
         if next_room:
-            # Calculate time until next room assignment
-            current_time = int(round(time.time() * 1000))
-            next_assignment_time = lobby_data['last_room_assignment_time'] + 60 * 1000  # 60 seconds interval
-            time_until_next_assignment = max(0, next_assignment_time - current_time)
+            # Since reassignment happens immediately on the client, set time until switch
+            time_until_switch = 10  # Let's assume 10 seconds countdown
             return jsonify({
                 'next_room': next_room,
-                'time_until_next_assignment': time_until_next_assignment
+                'time_until_switch': time_until_switch * 1000  # Convert to milliseconds
             })
         else:
-            return jsonify({'error': 'Next room assignment not found'}), 404
+            # No next room assigned
+            return jsonify({'message': 'No new room assigned'})
     else:
         return jsonify({'error': 'Lobby not found'}), 404
 
@@ -620,18 +623,56 @@ def process_votes(lobby_data):
 
 def update_room_assignments_if_needed(lobby_data):
     current_time = int(round(time.time() * 1000))
-    last_assignment_time = lobby_data.get('last_room_assignment_time', 0)
-    # Reassign rooms every minute
-    if current_time - last_assignment_time >= 60 * 1000:
-        # Reassign rooms
-        room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
-        lobby_data['room_assignments'] = room_assignments
-        lobby_data['last_room_assignment_time'] = current_time
-        # Assign next rooms
-        next_room_assignments = game_logic.assign_rooms(lobby_data['player_names'], lobby_data['rooms'])
-        lobby_data['next_room_assignments'] = next_room_assignments
-        print(f"Rooms reassigned at {current_time} in lobby {lobby_data.get('lobby_code', '')}")
-        return True  # Indicate that rooms were reassigned
+    last_check_time = lobby_data.get('last_check_time', 0)
+    reassignment_check_interval = 10 * 1000  # 10 seconds in milliseconds
+
+    # Check if enough time has passed since the last check
+    if current_time - last_check_time >= reassignment_check_interval:
+        # Update the last check time
+        lobby_data['last_check_time'] = current_time
+
+        # Do not reassign if a meeting is active
+        if lobby_data.get('meeting_active', False):
+            return False  # No reassignment during meetings
+
+        # Ensure only one player is reassigned every 30 seconds
+        last_reassignment_time = lobby_data.get('last_reassignment_time', 0)
+        if current_time - last_reassignment_time < 30 * 1000:
+            return False  # Do not reassign yet
+
+        # Get a list of players who can be reassigned
+        eligible_players = []
+        for player in lobby_data['player_names']:
+            if lobby_data['player_statuses'].get(player) != 'alive':
+                continue  # Skip dead players
+            if lobby_data['reassignments'].get(player, 0) >= 3:
+                continue  # Skip if already reassigned 3 times
+            eligible_players.append(player)
+
+        if not eligible_players:
+            return False  # No eligible players to reassign
+
+        # Randomly select one player to reassign
+        player_to_reassign = random.choice(eligible_players)
+
+        # Assign a new room
+        new_room = random.choice(lobby_data['rooms'])
+        if 'next_room_assignments' not in lobby_data:
+            lobby_data['next_room_assignments'] = {}
+        lobby_data['next_room_assignments'][player_to_reassign] = new_room
+
+        # Increment the player's reassignment count
+        lobby_data['reassignments'][player_to_reassign] += 1
+
+        # Update the last reassignment time
+        lobby_data['last_reassignment_time'] = current_time
+
+        # Optionally, add to activity log
+        message = f"{player_to_reassign} will be reassigned to a new room soon."
+        append_activity_log(lobby_data, message)
+
+        return True  # Indicate that a player was reassigned
+
     return False  # No reassignment needed
 
 def format_time_ms(milliseconds):
