@@ -615,9 +615,9 @@ def mark_yourself_dead(lobby_code):
         # Update lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
 
-        # Optionally, add to activity log
-        message = f"{player_name} has been killed."
-        append_activity_log(lobby_data, message)
+        # # Optionally, add to activity log
+        # message = f"{player_name} has been killed."
+        # append_activity_log(lobby_data, message)
 
         # Check win conditions
         check_win_conditions(lobby_data)
