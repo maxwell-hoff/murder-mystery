@@ -842,16 +842,11 @@
             .then(response => response.json())
             .then(data => {
                 if (data.room) {
-                    if (playerRoom !== data.room) {
-                        // Player has been reassigned
-                        playerRoom = data.room;
-                        alert(`You have been reassigned to: ${playerRoom}`);
-                    } else {
-                        playerRoom = data.room;
-                    }
-                    // Update the room display
+                    // Update the player's room
+                    playerRoom = data.room;
+                    // Update the room display if it's revealed
                     if (roomRevealed) {
-                        document.getElementById('room-display').innerText = `You are in: ${playerRoom}`;
+                        document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
                     }
                 } else {
                     console.error('Error fetching room:', data.error);
