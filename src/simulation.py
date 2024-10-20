@@ -52,7 +52,9 @@ def impostor_has_kill_opportunity_same_room(room_assignment, players):
             rooms[room_number].append(player)
     # Find the impostor
     impostor = next(p for p in players if p.role == 'impostor' and p.status == 'alive')
-    impostor_room_number = room_assignment[impostor.name]
+    impostor_room_number = room_assignment.get(impostor.name)
+    if impostor_room_number is None:
+        return False, None, None  # Impostor is not in any room
     # Players in the impostor's room
     players_in_impostor_room = rooms.get(impostor_room_number, [])
     # Check if only the impostor and one crew member are in the room
@@ -62,7 +64,7 @@ def impostor_has_kill_opportunity_same_room(room_assignment, players):
         return True, crew_member.name, impostor_room_number  # Kill opportunity exists
     return False, None, None
 
-def simulate_game_with_constraints(players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill, require_same_room, min_seconds_until_discovery, max_seconds_until_discovery):
+def simulate_game_with_constraints(players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill, require_same_room, min_seconds_until_discovery, max_attempts=100):
     kill_opportunities = 0
     kill_opportunity_duration = 0
     kill_opportunity_counted = False
@@ -74,7 +76,7 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
     current_room = None
 
     # Dictionary to track rooms where kills have occurred and time since kill
-    kill_rooms = {}  # key: room_number, value: time since kill
+    kill_rooms = {}  # key: room_number, value: {'time_since_kill': time_since_kill, 'killed_player': 'Player_X'}
 
     # Generate initial assignment where impostor cannot kill immediately
     room_assignment = generate_initial_room_assignment(players, num_rooms, require_same_room)
@@ -93,14 +95,8 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
     current_time = 0
     for interval in range(num_intervals):
         # Update time since kill for each room
-        rooms_to_remove = []
-        for room_number in kill_rooms:
-            kill_rooms[room_number] += assignment_interval
-            if (kill_rooms[room_number] >= min_seconds_until_discovery) & (kill_rooms[room_number] <= max_seconds_until_discovery):
-                rooms_to_remove.append(room_number)
-        # Remove rooms where discovery time has passed
-        for room_number in rooms_to_remove:
-            del kill_rooms[room_number]
+        for room_number in list(kill_rooms.keys()):
+            kill_rooms[room_number]['time_since_kill'] += assignment_interval
 
         # Reassign one eligible player
         eligible_players = [player for player in players if player.status == 'alive' and (interval - last_reassignment_interval[player.name]) >= X]
@@ -109,8 +105,19 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
             current_room_player = room_assignment[player_to_reassign.name]
             possible_rooms = list(range(num_rooms))
             possible_rooms.remove(current_room_player)
-            # Exclude rooms where a kill has occurred and discovery time hasn't passed
-            possible_rooms = [room for room in possible_rooms if room not in kill_rooms]
+
+            if player_to_reassign.role == 'impostor':
+                # Impostor cannot enter any room where a kill has occurred
+                possible_rooms = [room for room in possible_rooms if room not in kill_rooms]
+            else:
+                # Crew members cannot enter rooms where a kill has occurred and discovery time hasn't passed
+                possible_rooms = [
+                    room for room in possible_rooms
+                    if room not in kill_rooms or kill_rooms[room]['time_since_kill'] >= min_seconds_until_discovery
+                ]
+                # Additionally, crew member should not be the killed player
+                # This is already handled since dead players are not in eligible_players
+
             if possible_rooms:
                 new_room = random.choice(possible_rooms)
                 room_assignment[player_to_reassign.name] = new_room
@@ -164,7 +171,15 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
                     kill_opportunity_counted_same_room = True
                     kill_opportunity_in_interval_same_room = True
                     # Record the kill room and reset its timer
-                    kill_rooms[current_room] = 0  # Start timing until discovery
+                    kill_rooms[current_room] = {
+                        'time_since_kill': 0,
+                        'killed_player': current_crew_member
+                    }
+                    # Mark the killed player as dead
+                    killed_player = next(p for p in players if p.name == current_crew_member)
+                    killed_player.status = 'dead'
+                    # Remove the killed player from room assignments
+                    del room_assignment[killed_player.name]
             else:
                 kill_opportunity_duration_same_room = 0
                 kill_opportunity_counted_same_room = False
@@ -210,7 +225,7 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
 
     return result
 
-def run_simulation(num_players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill, require_same_room, min_seconds_until_discovery, max_seconds_until_discovery, max_attempts=100):
+def run_simulation(num_players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill, require_same_room, min_seconds_until_discovery, max_attempts=100):
     # Try up to max_attempts to find a suitable game
     for attempt in range(max_attempts):
         # Create players
@@ -219,22 +234,23 @@ def run_simulation(num_players, num_rooms, simulation_time, assignment_interval,
 
         # Simulate the game
         result = simulate_game_with_constraints(
-            players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill, require_same_room, min_seconds_until_discovery, max_seconds_until_discovery
+            players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio,
+            min_time_per_kill, require_same_room, min_seconds_until_discovery
         )
 
         # Calculate Difficulty metric
-        num_crew = num_players - 1  # Subtract impostor
+        num_crew = sum(1 for p in players if p.role == 'crew')  # Count current crew members
         if require_same_room:
             total_kill_opportunities = result['total_kill_opportunities_same_room']
         else:
             total_kill_opportunities = result['total_kill_opportunities']
 
-        difficulty = total_kill_opportunities / (num_crew - 1)
+        difficulty = total_kill_opportunities / max(num_crew - 1, 1)  # Avoid division by zero
 
         result['difficulty'] = difficulty
 
         # Check if termination condition met
-        required_kill_opportunities = difficulty_ratio * (num_players - 2)  # Subtract impostor and one crew member
+        required_kill_opportunities = difficulty_ratio * (num_players - 2)  # Initial crew members minus one
         if total_kill_opportunities >= required_kill_opportunities:
             return result  # Successful simulation
 
@@ -251,13 +267,13 @@ def get_difficulty_ratio(level):
 
 def main():
     num_players = 10  # Adjust as needed
-    num_rooms = 4    # Adjust as needed
+    num_rooms = 8    # Adjust as needed
     simulation_time = 1200  # Total game time in seconds (e.g., 20 minutes)
     assignment_interval = 10  # Room assignments change every 10 seconds
     min_time_per_kill = 30  # Minimum time kill opportunity must persist
     min_seconds_until_discovery = 240  # Minimum time until a body is discovered
-    max_seconds_until_discovery = 360  # Maximum time until a body is discovered
     require_same_room = True  # Toggle between the two kill opportunity definitions
+    max_simulation_attempts = 50  # Number of simulation attempts
 
     # Iterate through difficulty levels
     difficulty_levels = ['easy', 'medium', 'hard']
@@ -278,8 +294,7 @@ def main():
                 min_time_per_kill=min_time_per_kill,
                 require_same_room=require_same_room,
                 min_seconds_until_discovery=min_seconds_until_discovery,
-                max_seconds_until_discovery=max_seconds_until_discovery,
-                max_attempts=100  # Set the maximum number of attempts
+                max_attempts=max_simulation_attempts  # Set the maximum number of attempts
             )
 
             if result is not None:
@@ -296,7 +311,7 @@ def main():
                 # Print the roles of each player
                 print("\nPlayer Roles:")
                 for player in result['players']:
-                    print(f"{player.name}: {player.role}")
+                    print(f"{player.name}: {player.role}, status: {player.status}")
 
                 print("\nAssignments and Kill Opportunities per Interval:")
                 for idx, assignment in enumerate(result['assignments_per_interval']):
@@ -312,8 +327,7 @@ def main():
                         kill_opportunity = result['kill_opportunity_per_interval'][idx]
                         has_kill_opportunity = result['has_kill_opportunity_per_interval'][idx]
                         duration = result['kill_opportunity_duration_per_interval'][idx]
-                    print(f"Interval {idx}: {assignment_with_roles}, kill opp: {has_kill_opportunity}, kill opportunity {min_time_per_kill} sec: {kill_opportunity}, game duration: {assignment_interval * idx} ")
-
+                    print(f"Interval {idx}: {assignment_with_roles}, Has Kill Opportunity: {has_kill_opportunity}, Kill Opportunity Duration: {duration} seconds, Kill Opportunity Passed {min_time_per_kill}s Threshold: {kill_opportunity}")
                 break  # Exit the X loop when a successful assignment is found
         else:
             print(f"No suitable assignment found for difficulty level {difficulty_level}")
