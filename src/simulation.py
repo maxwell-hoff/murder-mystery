@@ -37,10 +37,10 @@ def impostor_has_kill_opportunity(room_assignment, players):
                 return True  # Kill opportunity exists
     return False
 
-def simulate_game_with_constraints(players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio):
-    kill_cooldown_time = 30  # in seconds
-    last_kill_time = -kill_cooldown_time  # So the impostor can kill at time 0
+def simulate_game_with_constraints(players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill):
     kill_opportunities = 0
+    kill_opportunity_duration = 0  # Duration that kill opportunity has persisted
+    kill_opportunity_counted = False  # Whether kill opportunity has been counted for current continuous period
 
     # Generate initial assignment where impostor cannot kill immediately
     room_assignment = generate_initial_room_assignment(players, num_rooms)
@@ -50,6 +50,8 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
     # Record assignments and kill opportunities per interval
     assignments_per_interval = []
     kill_opportunity_per_interval = []
+    has_kill_opportunity_per_interval = []
+    kill_opportunity_duration_per_interval = []
 
     # Number of intervals
     num_intervals = simulation_time // assignment_interval
@@ -72,32 +74,51 @@ def simulate_game_with_constraints(players, num_rooms, simulation_time, assignme
         # Record the room assignment for this interval
         assignments_per_interval.append(room_assignment.copy())
 
-        # Check if impostor has a kill opportunity during this interval
-        has_kill_opportunity = False
+        # Track if a kill opportunity is counted during this interval
+        kill_opportunity_in_interval = False
+        has_kill_opportunity = False  # To record if there's any kill opportunity in this interval
+
+        # Simulate each second within the interval
         for second in range(assignment_interval):
             current_time += 1
-            if current_time - last_kill_time >= kill_cooldown_time and not has_kill_opportunity:
-                if impostor_has_kill_opportunity(room_assignment, players):
-                    kill_opportunities += 1
-                    last_kill_time = current_time
-                    has_kill_opportunity = True
-            # Termination condition based on difficulty ratio
-            if kill_opportunities >= difficulty_ratio * (len(players) - 2):  # Subtract impostor and one crew member
-                break
-        kill_opportunity_per_interval.append(has_kill_opportunity)
-        if kill_opportunities >= difficulty_ratio * (len(players) - 2):
-            break
-    return assignments_per_interval, kill_opportunity_per_interval, kill_opportunities
+            # Check if impostor has a kill opportunity
+            current_has_kill_opportunity = impostor_has_kill_opportunity(room_assignment, players)
 
-def run_simulation(num_players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio):
+            if current_has_kill_opportunity:
+                has_kill_opportunity = True  # There is a kill opportunity at some point in this interval
+                kill_opportunity_duration += 1
+                if kill_opportunity_duration >= min_time_per_kill and not kill_opportunity_counted:
+                    # Kill opportunity has persisted for at least 30 seconds continuously
+                    kill_opportunities += 1
+                    kill_opportunity_counted = True
+                    kill_opportunity_in_interval = True
+            else:
+                kill_opportunity_duration = 0
+                kill_opportunity_counted = False  # Reset when kill opportunity is lost
+
+            # Check termination condition
+            if kill_opportunities >= difficulty_ratio * (len(players) - 2):
+                break  # Exit the second loop
+
+        kill_opportunity_per_interval.append(kill_opportunity_in_interval)
+        has_kill_opportunity_per_interval.append(has_kill_opportunity)
+        kill_opportunity_duration_per_interval.append(kill_opportunity_duration)
+
+        # Check termination condition after each interval
+        if kill_opportunities >= difficulty_ratio * (len(players) - 2):
+            break  # Exit the interval loop
+
+    return assignments_per_interval, kill_opportunity_per_interval, has_kill_opportunity_per_interval, kill_opportunity_duration_per_interval, kill_opportunities, players
+
+def run_simulation(num_players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill):
     # Create players
     players = [Player(name=f"Player_{i+1}") for i in range(num_players)]
     # Assign roles
     players[0].role = 'impostor'  # First player is the impostor
 
     # Simulate the game
-    assignments_per_interval, kill_opportunity_per_interval, total_kill_opportunities = simulate_game_with_constraints(
-        players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio
+    assignments_per_interval, kill_opportunity_per_interval, has_kill_opportunity_per_interval, kill_opportunity_duration_per_interval, total_kill_opportunities, players = simulate_game_with_constraints(
+        players, num_rooms, simulation_time, assignment_interval, X, difficulty_ratio, min_time_per_kill
     )
 
     # Calculate Difficulty metric
@@ -107,8 +128,11 @@ def run_simulation(num_players, num_rooms, simulation_time, assignment_interval,
     result = {
         'assignments_per_interval': assignments_per_interval,
         'kill_opportunity_per_interval': kill_opportunity_per_interval,
+        'has_kill_opportunity_per_interval': has_kill_opportunity_per_interval,
+        'kill_opportunity_duration_per_interval': kill_opportunity_duration_per_interval,
         'total_kill_opportunities': total_kill_opportunities,
-        'difficulty': difficulty
+        'difficulty': difficulty,
+        'players': players
     }
     return result
 
@@ -125,6 +149,7 @@ def main():
     num_rooms = 3    # Adjust as needed
     simulation_time = 600  # Total game time in seconds (e.g., 10 minutes)
     assignment_interval = 10  # Room assignments change every 10 seconds
+    min_time_per_kill = 30  # Minimum time impostor must wait between kills
 
     # Iterate through difficulty levels
     difficulty_levels = ['easy', 'medium', 'hard']
@@ -141,7 +166,8 @@ def main():
                 simulation_time=simulation_time,
                 assignment_interval=assignment_interval,
                 X=X,
-                difficulty_ratio=difficulty_ratio
+                difficulty_ratio=difficulty_ratio,
+                min_time_per_kill=min_time_per_kill
             )
             total_kill_opportunities = result['total_kill_opportunities']
             required_kill_opportunities = difficulty_ratio * (num_players - 2)  # Subtract impostor and one crew member
@@ -151,9 +177,25 @@ def main():
                 print(f"\nSuccessful game room assignment found with X = {X}")
                 print(f"Total Kill Opportunities: {total_kill_opportunities}")
                 print(f"Difficulty Metric: {result['difficulty']:.2f}")
+
+                # Print the roles of each player
+                print("\nPlayer Roles:")
+                for player in result['players']:
+                    print(f"{player.name}: {player.role}")
+
                 print("\nAssignments and Kill Opportunities per Interval:")
-                for idx, (assignment, kill_opportunity) in enumerate(zip(result['assignments_per_interval'], result['kill_opportunity_per_interval'])):
-                    print(f"Interval {idx}: Assignment = {assignment}, Kill Opportunity = {kill_opportunity}")
+                for idx, (assignment, kill_opportunity, has_kill_opportunity, duration) in enumerate(zip(
+                    result['assignments_per_interval'],
+                    result['kill_opportunity_per_interval'],
+                    result['has_kill_opportunity_per_interval'],
+                    result['kill_opportunity_duration_per_interval']
+                )):
+                    # Build a string to display roles with assignments
+                    assignment_with_roles = {}
+                    for player_name, room_number in assignment.items():
+                        assignment_with_roles[player_name] = room_number
+
+                    print(f"Interval {idx}: {assignment_with_roles}, kill opp: {has_kill_opportunity}, kill opporuntiy {min_time_per_kill} sec: {kill_opportunity}, duration: {(simulation_time // max_X) * idx} ")
                 break  # Exit the X loop when a successful assignment is found
         else:
             print(f"No suitable assignment found for difficulty level {difficulty_level}")
