@@ -239,7 +239,7 @@
     <div id="create-join-section" class="hidden">
         <!-- Create Lobby Section -->
         <div id="create-lobby-section" class="hidden">
-            <h1>Create a New Lobby</h1>
+            <img id="create-lobby-title-image" src="{{ url_for('static', filename='create_lobby_title.v1.jpg') }}" alt="Create Lobby Title Image" />
             <!-- Create Lobby Form -->
             <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
                 <!-- Rooms Available Dropdown -->
@@ -266,9 +266,9 @@
             </form>
         </div>
 
-        <!-- Join Lobby Section (initially hidden) -->
+        <!-- Join Lobby Section -->
         <div id="join-lobby-section" class="hidden">
-            <h1>Join an Existing Lobby</h1>
+            <img id="join-lobby-title-image" src="{{ url_for('static', filename='join_lobby_title.v1.jpg') }}" alt="Join Lobby Title Image" />
             <!-- Join Lobby Form -->
             <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
                 <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
