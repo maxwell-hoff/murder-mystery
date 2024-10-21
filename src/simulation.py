@@ -15,14 +15,12 @@ def generate_initial_room_assignment(players, num_rooms):
     return room_assignment
 
 def simulate_game_with_constraints(
-    players, num_rooms, simulation_time, assignment_interval, X_intervals, difficulty_ratio,
+    players, num_rooms, simulation_time, assignment_interval, min_time_in_room_intervals, difficulty_ratio,
     min_time_per_kill, require_same_room, min_seconds_until_discovery,
     max_seconds_until_discovery, initial_room_assignment=None, kill_rooms=None
 ):
     # Convert min_time_per_kill to intervals
     min_kill_intervals = math.ceil(min_time_per_kill / assignment_interval)
-    # Convert X (reassignment time) to intervals
-    X = math.ceil(X_intervals / assignment_interval)
 
     # Calculate required kill opportunities
     required_kill_opportunities = int(difficulty_ratio * (len(players) - 2))
@@ -33,9 +31,8 @@ def simulate_game_with_constraints(
     assignments_per_interval = []
     kill_opportunities_same_room = 0
     kill_rooms = {} if kill_rooms is None else kill_rooms.copy()
-    last_reassignment_interval = {player.name: -X for player in players}
+    last_reassignment_interval = {player.name: -min_time_in_room_intervals for player in players}
     total_intervals = simulation_time // assignment_interval
-    kill_opportunity_intervals = []
 
     # Schedule kill opportunities with variation and ensure no kill in the first interval
     kill_intervals = []
@@ -168,7 +165,8 @@ def simulate_game_with_constraints(
             kill_started_interval = None
             # Assign players to rooms ensuring no kill opportunities
             for player in alive_players:
-                if interval - last_reassignment_interval[player.name] >= X:
+                time_in_room = interval - last_reassignment_interval[player.name]
+                if time_in_room >= min_time_in_room_intervals:
                     # Assign to a room
                     if player.role == 'impostor':
                         impostor_room = random.choice(available_rooms)
@@ -237,13 +235,13 @@ def simulate_game_with_constraints(
     return result
 
 def run_simulation(
-    num_players, num_rooms, simulation_time, assignment_interval, X_minutes, difficulty_ratio,
+    num_players, num_rooms, simulation_time, assignment_interval, min_time_in_room_minutes, difficulty_ratio,
     min_time_per_kill, require_same_room, min_seconds_until_discovery, max_seconds_until_discovery,
     num_initial_assignments=10, max_attempts_per_assignment=10, initial_room_assignments=None, kill_rooms_list=None
 ):
-    # Convert X_minutes to seconds
-    X_seconds = X_minutes * 60
-    X_intervals = X_seconds / assignment_interval
+    # Convert min_time_in_room_minutes to seconds and intervals
+    min_time_in_room_seconds = min_time_in_room_minutes * 60
+    min_time_in_room_intervals = min_time_in_room_seconds / assignment_interval
 
     # Calculate required kill opportunities
     required_kill_opportunities = int(difficulty_ratio * (num_players - 2))
@@ -266,7 +264,7 @@ def run_simulation(
 
             # Simulate the game
             result = simulate_game_with_constraints(
-                players, num_rooms, simulation_time, assignment_interval, X_intervals, difficulty_ratio,
+                players, num_rooms, simulation_time, assignment_interval, min_time_in_room_intervals, difficulty_ratio,
                 min_time_per_kill, require_same_room, min_seconds_until_discovery,
                 max_seconds_until_discovery, initial_room_assignment, kill_rooms
             )
@@ -298,17 +296,14 @@ def main():
     min_seconds_until_discovery = 240  # Minimum time until a body is discovered
     max_seconds_until_discovery = 1000  # Maximum time until a body is discovered
     require_same_room = True  # Focus on same room kill opportunities
-
     # Set the difficulty level directly
     difficulty_level = 'hard'
     difficulty_ratio = get_difficulty_ratio(difficulty_level)
-
     # Number of initial room assignments to try
     num_initial_assignments = 10
     max_attempts_per_assignment = 10
-
-    # Set X (minimum time before a player can be reassigned in minutes)
-    X_minutes = 2  # Players can only be reassigned every 2 minutes
+    # Set minimum time a player must stay in a room (in minutes)
+    min_time_in_room_minutes = 2  # Players must stay in the same room for at least 2 minutes
 
     # Run the simulation
     result = run_simulation(
@@ -316,7 +311,7 @@ def main():
         num_rooms=num_rooms,
         simulation_time=simulation_time,
         assignment_interval=assignment_interval,
-        X_minutes=X_minutes,
+        min_time_in_room_minutes=min_time_in_room_minutes,
         difficulty_ratio=difficulty_ratio,
         min_time_per_kill=min_time_per_kill,
         require_same_room=require_same_room,
@@ -330,7 +325,7 @@ def main():
         # Successful simulation found
         total_kill_opportunities = result['total_kill_opportunities_same_room']
         required_kill_opportunities = result['required_kill_opportunities']
-        print(f"\nSuccessful game room assignment found with X = {X_minutes} minutes")
+        print(f"\nSuccessful game room assignment found with minimum time in room = {min_time_in_room_minutes} minutes")
         print(f"Total Kill Opportunities: {total_kill_opportunities}")
         print(f"Required Kill Opportunities: {required_kill_opportunities}")
         difficulty_metric = total_kill_opportunities / required_kill_opportunities if required_kill_opportunities > 0 else 0
