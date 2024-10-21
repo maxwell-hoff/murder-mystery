@@ -322,13 +322,13 @@ def get_difficulty_ratio(level):
     return difficulty_levels.get(level, 2)  # Default to medium if not found
 
 def main():
-    num_players = 6  # Adjust as needed
+    num_players = 5  # Adjust as needed
     num_rooms = 4    # Adjust as needed
     simulation_time = 600  # Total game time in seconds (e.g., 20 minutes)
     assignment_interval = 10  # Room assignments change every 10 seconds
     min_time_per_kill = 30  # Minimum time kill opportunity must persist
-    min_seconds_until_discovery = 100  # Minimum time until a body is discovered
-    max_seconds_until_discovery = 500  # Maximum time until a body is discovered
+    min_seconds_until_discovery = 240  # Minimum time until a body is discovered
+    max_seconds_until_discovery = 1000  # Maximum time until a body is discovered
     require_same_room = True  # Toggle between the two kill opportunity definitions
 
     # Set the difficulty level directly
@@ -394,7 +394,7 @@ def main():
                 kill_opportunity = result['kill_opportunity_per_interval'][idx]
                 has_kill_opportunity = result['has_kill_opportunity_per_interval'][idx]
                 duration = result['kill_opportunity_duration_per_interval'][idx]
-            print(f"Interval {idx}: {assignment_with_roles}, Has Kill Opportunity: {has_kill_opportunity}, Kill Opportunity Duration: {duration} seconds, Kill Opportunity Passed {min_time_per_kill}s Threshold: {kill_opportunity}, interval time: {inter}")
+            print(f"Interval {idx}: {assignment_with_roles}, Has Kill Opportunity: {has_kill_opportunity}, Kill Opportunity Duration: {duration} seconds, Kill Opportunity Passed {min_time_per_kill}s Threshold: {kill_opportunity}")
     else:
         print(f"No suitable assignment found after {num_initial_assignments} initial assignments")
 
