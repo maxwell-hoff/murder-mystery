@@ -306,7 +306,8 @@
 
     <!-- Lobby screen to show player names and lobby code -->
     <div id="lobby-screen" class="hidden">
-        <h2>Lobby</h2>
+        <img id="lobby-title-image" src="{{ url_for('static', filename='images/lobby_title.v1.jpg') }}" alt="Lobby Title Image" />
+        <!-- <h2>Lobby</h2> -->
         <p>Lobby Code: <span id="lobby-code"></span></p>
         <!-- Add a table for Players and Status -->
         <table>
