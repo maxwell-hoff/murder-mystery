@@ -219,6 +219,25 @@
         #select-room-modal button {
             margin: 5px;
         }
+
+        /* Styles for the title images */
+        #create-lobby-title-image,
+        #join-lobby-title-image {
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            height: auto;
+            max-width: 600px;
+        }
+
+        /* Limit the height on smaller screens */
+        @media (max-width: 600px) {
+            #create-lobby-title-image,
+            #join-lobby-title-image {
+                max-height: 150px;
+                object-fit: contain;
+            }
+        }
     </style>
 </head>
 <body>
