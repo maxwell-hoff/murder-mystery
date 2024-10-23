@@ -260,14 +260,14 @@
         }
 
         /* Hide footer when #initial-screen is visible */
-        #initial-screen:not(.hidden) ~ footer {
+        /* #initial-screen:not(.hidden) ~ footer {
             display: none;
-        }
+        } */
 
         /* Show footer when #initial-screen is hidden */
-        #initial-screen.hidden ~ footer {
+        /* #initial-screen.hidden ~ footer {
             display: block;
-        }
+        } */
 
         /* Ensure footer is visible when other sections are active */
         #create-join-section ~ footer,
@@ -283,6 +283,12 @@
             background-color: rgb(1,1,1);
             padding: 80px 0;
             flex-shrink: 0;
+            display: none;
+        }
+
+        /* Show footer when not on the initial screen */
+        body.show-footer footer {
+            display: block;
         }
     </style>
 </head>
@@ -556,11 +562,27 @@
             function showCreateLobby() {
                 // Hide the initial screen
                 document.getElementById('initial-screen').classList.add('hidden');
+                // Show the footer
+                document.body.classList.add('show-footer');
                 // Show the create lobby section
                 document.getElementById('create-join-section').classList.remove('hidden');
                 document.getElementById('create-lobby-section').classList.remove('hidden');
                 document.getElementById('join-lobby-section').classList.add('hidden');
             }
+
+            function showInitialScreen() {
+                // Show the initial screen
+                document.getElementById('initial-screen').classList.remove('hidden');
+                // Hide the footer
+                document.body.classList.remove('show-footer');
+                // Hide other sections
+                document.getElementById('create-join-section').classList.add('hidden');
+                document.getElementById('create-lobby-section').classList.add('hidden');
+                document.getElementById('join-lobby-section').classList.add('hidden');
+            }
+            
+            // Initially, ensure the footer is hidden
+            document.body.classList.remove('show-footer');
 
             function showJoinLobby() {
                 // Hide the initial screen
