@@ -240,6 +240,35 @@
                 object-fit: contain;
             }
         }
+
+        /* Styles for the footer image */
+        #footer-image {
+            display: block;
+            margin: 0 auto;
+            width: 100%;
+            height: auto;
+            max-width: 600px;
+        }
+
+        /* Hide footer when the initial screen is visible */
+        #initial-screen ~ footer {
+            display: none;
+        }
+
+        /* Ensure footer is visible when other sections are active */
+        #create-join-section ~ footer,
+        #name-popup ~ footer,
+        #lobby-screen ~ footer,
+        #game-screen ~ footer,
+        #room-names-section ~ footer {
+            display: block;
+        }
+
+        /* Optional: Style the footer */
+        footer {
+            background-color: #111;
+            padding: 10px 0;
+        }
     </style>
 </head>
 <body>
@@ -1760,5 +1789,8 @@
             });
         }      
     </script>
+<footer>
+    <img id="footer-image" src="{{ url_for('static', filename='images/footer_image.v1.jpg') }}" alt="Footer Image">
+</footer>
 </body>
 </html>
