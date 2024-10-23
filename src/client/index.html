@@ -9,8 +9,17 @@
         .hidden { display: none; }
     
         body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Ensure the body takes up the full viewport height */
+            margin: 0; /* Remove default margin */
             background-color: rgb(1, 1, 1);
             color: white;
+        }
+
+        /* The page container will hold all content except the footer */
+        #page-container {
+            flex: 1; /* Allow it to grow and fill available space */
         }
     
         /* Apply to all elements to ensure text is white */
@@ -268,1529 +277,1532 @@
         footer {
             background-color: rgb(1,1,1);
             padding: 10px 0;
+            flex-shrink: 0;
         }
     </style>
 </head>
 <body>
-    <div id="initial-screen">
-        <video id="main-title-video" autoplay loop muted playsinline webkit-playsinline>
-            <source src="{{ url_for('static', filename='images/intro_video.v7.mp4') }}" type="video/mp4">
-            <!-- Fallback message if the video format isn't supported -->
-            Your browser does not support the video tag.
-        </video>
-        <div id="button-container">
-            <button onclick="showCreateLobby()">Start Game</button>
-            <button onclick="showJoinLobby()">Join Game</button>
+    <div id="page-container">
+        <div id="initial-screen">
+            <video id="main-title-video" autoplay loop muted playsinline webkit-playsinline>
+                <source src="{{ url_for('static', filename='images/intro_video.v7.mp4') }}" type="video/mp4">
+                <!-- Fallback message if the video format isn't supported -->
+                Your browser does not support the video tag.
+            </video>
+            <div id="button-container">
+                <button onclick="showCreateLobby()">Start Game</button>
+                <button onclick="showJoinLobby()">Join Game</button>
+            </div>
         </div>
-    </div>
-    
+        
 
-    <!-- Create/Join Section (initially hidden) -->
-    <div id="create-join-section" class="hidden">
-        <!-- Create Lobby Section -->
-        <div id="create-lobby-section" class="hidden">
-            <img id="create-lobby-title-image" src="{{ url_for('static', filename='images/create_lobby_title.v1.jpg') }}" alt="Create Lobby Title Image" />
-            <!-- Create Lobby Form -->
-            <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
-                <!-- Rooms Available Dropdown -->
-                <label for="rooms">Rooms Available:</label>
-                <select id="rooms" name="rooms" required>
-                    <!-- Options will be populated by JavaScript -->
-                </select><br><br>
-                
-                <!-- Number of Players Dropdown -->
-                <label for="players">Number of Players:</label>
-                <select id="players" name="players" required>
-                    <!-- Options will be populated by JavaScript -->
-                </select><br><br>
+        <!-- Create/Join Section (initially hidden) -->
+        <div id="create-join-section" class="hidden">
+            <!-- Create Lobby Section -->
+            <div id="create-lobby-section" class="hidden">
+                <img id="create-lobby-title-image" src="{{ url_for('static', filename='images/create_lobby_title.v1.jpg') }}" alt="Create Lobby Title Image" />
+                <!-- Create Lobby Form -->
+                <form id="create-lobby-form" onsubmit="handleCreateLobby(event)">
+                    <!-- Rooms Available Dropdown -->
+                    <label for="rooms">Rooms Available:</label>
+                    <select id="rooms" name="rooms" required>
+                        <!-- Options will be populated by JavaScript -->
+                    </select><br><br>
+                    
+                    <!-- Number of Players Dropdown -->
+                    <label for="players">Number of Players:</label>
+                    <select id="players" name="players" required>
+                        <!-- Options will be populated by JavaScript -->
+                    </select><br><br>
 
-                <!-- Game Duration Dropdown -->
-                <label for="duration">Game Duration (minutes):</label>
-                <select id="duration" name="duration" required>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="60">60</option>
-                </select><br><br>
-                
-                <button type="submit">Create Lobby</button>
-            </form>
-        </div>
+                    <!-- Game Duration Dropdown -->
+                    <label for="duration">Game Duration (minutes):</label>
+                    <select id="duration" name="duration" required>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="60">60</option>
+                    </select><br><br>
+                    
+                    <button type="submit">Create Lobby</button>
+                </form>
+            </div>
 
-        <!-- Join Lobby Section -->
-        <div id="join-lobby-section" class="hidden">
-            <img id="join-lobby-title-image" src="{{ url_for('static', filename='images/join_lobby_title.v1.jpg') }}" alt="Join Lobby Title Image" />
-            <!-- Join Lobby Form -->
-            <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
-                <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
-                <button type="submit">Join Lobby</button>
-            </form>
-            <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
-        </div>
-    </div>
-
-    <!-- Popup to ask for player name (used for both create and join) -->
-    <div id="name-popup" class="hidden">
-        <h2>Enter Your Name</h2>
-        <input type="text" id="player-name" placeholder="Your name" required>
-        <button onclick="submitPlayerName()">Submit</button>
-    </div>
-
-    <!-- Lobby screen to show player names and lobby code -->
-    <div id="lobby-screen" class="hidden">
-        <img id="lobby-title-image" src="{{ url_for('static', filename='images/lobby_title.v1.jpg') }}" alt="Lobby Title Image" />
-        <!-- <h2>Lobby</h2> -->
-        <p>Lobby Code: <span id="lobby-code"></span></p>
-        <!-- Add a table for Players and Status -->
-        <table>
-            <thead>
-                <tr>
-                    <th>Players</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody id="player-list">
-                <!-- Player slots will be generated dynamically -->
-            </tbody>
-        </table>
-        <!-- Add a Ready button here -->
-        <button id="ready-button" onclick="setReadyStatus()">Ready</button>
-    </div>
-
-    <!-- Game screen -->
-    <div id="game-screen" class="hidden">
-        <h1>Game Screen</h1>
-        <!-- Display the Game Timer -->
-        <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
-
-        <!-- Call Meeting/Mark Dead Button -->
-        <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
-        <button id="mark-dead-button" onclick="markYourselfDead()">Mark Yourself Dead</button>
-
-        <!-- Meeting Timer (initially hidden) -->
-        <div id="meeting-timer-section" class="hidden">
-            <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
+            <!-- Join Lobby Section -->
+            <div id="join-lobby-section" class="hidden">
+                <img id="join-lobby-title-image" src="{{ url_for('static', filename='images/join_lobby_title.v1.jpg') }}" alt="Join Lobby Title Image" />
+                <!-- Join Lobby Form -->
+                <form id="join-lobby-form" onsubmit="handleJoinLobby(event)">
+                    <input type="text" id="join-code" name="code" placeholder="Enter code" required><br><br>
+                    <button type="submit">Join Lobby</button>
+                </form>
+                <p id="error-message" class="error hidden">Lobby not found. Please try again.</p>
+            </div>
         </div>
 
-        <!-- Reveal/Hide Role Button -->
-        <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
-        <!-- Placeholder for displaying the role -->
-        <p id="role-display" class="hidden"></p>
+        <!-- Popup to ask for player name (used for both create and join) -->
+        <div id="name-popup" class="hidden">
+            <h2>Enter Your Name</h2>
+            <input type="text" id="player-name" placeholder="Your name" required>
+            <button onclick="submitPlayerName()">Submit</button>
+        </div>
 
-        <!-- Room Assignment Section -->
-        <h2>Room Assignment:</h2>
-        <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
-        <p id="room-display" class="hidden"></p>
-        <p id="countdown-display" class="hidden"></p>
-        <p id="next-room-display" class="hidden"></p>
-
-        <!-- Voting Table Section (initially hidden) -->
-        <div id="voting-section" class="hidden">
-            <h2>Vote for a Player</h2>
-            <!-- Skip Button -->
-            <button id="skip-button" onclick="skipVote()">Skip</button>
+        <!-- Lobby screen to show player names and lobby code -->
+        <div id="lobby-screen" class="hidden">
+            <img id="lobby-title-image" src="{{ url_for('static', filename='images/lobby_title.v1.jpg') }}" alt="Lobby Title Image" />
+            <!-- <h2>Lobby</h2> -->
+            <p>Lobby Code: <span id="lobby-code"></span></p>
+            <!-- Add a table for Players and Status -->
             <table>
                 <thead>
                     <tr>
                         <th>Players</th>
                         <th>Status</th>
-                        <th>Vote</th>
                     </tr>
                 </thead>
-                <tbody id="voting-table-body">
-                    <!-- Voting options will be generated dynamically -->
+                <tbody id="player-list">
+                    <!-- Player slots will be generated dynamically -->
                 </tbody>
             </table>
+            <!-- Add a Ready button here -->
+            <button id="ready-button" onclick="setReadyStatus()">Ready</button>
         </div>
-        
-        <!-- Activity Log Section -->
-        <div id="activity-log-section">
-            <h2>Activity Log</h2>
-            <ul id="activity-log">
-                <!-- Activity log entries will be dynamically added here -->
-            </ul>
+
+        <!-- Game screen -->
+        <div id="game-screen" class="hidden">
+            <h1>Game Screen</h1>
+            <!-- Display the Game Timer -->
+            <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
+
+            <!-- Call Meeting/Mark Dead Button -->
+            <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
+            <button id="mark-dead-button" onclick="markYourselfDead()">Mark Yourself Dead</button>
+
+            <!-- Meeting Timer (initially hidden) -->
+            <div id="meeting-timer-section" class="hidden">
+                <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
+            </div>
+
+            <!-- Reveal/Hide Role Button -->
+            <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
+            <!-- Placeholder for displaying the role -->
+            <p id="role-display" class="hidden"></p>
+
+            <!-- Room Assignment Section -->
+            <h2>Room Assignment:</h2>
+            <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
+            <p id="room-display" class="hidden"></p>
+            <p id="countdown-display" class="hidden"></p>
+            <p id="next-room-display" class="hidden"></p>
+
+            <!-- Voting Table Section (initially hidden) -->
+            <div id="voting-section" class="hidden">
+                <h2>Vote for a Player</h2>
+                <!-- Skip Button -->
+                <button id="skip-button" onclick="skipVote()">Skip</button>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Players</th>
+                            <th>Status</th>
+                            <th>Vote</th>
+                        </tr>
+                    </thead>
+                    <tbody id="voting-table-body">
+                        <!-- Voting options will be generated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Activity Log Section -->
+            <div id="activity-log-section">
+                <h2>Activity Log</h2>
+                <ul id="activity-log">
+                    <!-- Activity log entries will be dynamically added here -->
+                </ul>
+            </div>
         </div>
-    </div>
 
-    <!-- Room Names Section (initially hidden) -->
-    <div id="room-names-section" class="hidden">
-        <h2>Name Your Rooms</h2>
-        <form id="room-names-form" onsubmit="handleRoomNames(event)">
-            <!-- Room inputs will be generated dynamically -->
-            <div id="room-inputs"></div>
-            <button type="submit">Next</button>
-        </form>
-    </div>
+        <!-- Room Names Section (initially hidden) -->
+        <div id="room-names-section" class="hidden">
+            <h2>Name Your Rooms</h2>
+            <form id="room-names-form" onsubmit="handleRoomNames(event)">
+                <!-- Room inputs will be generated dynamically -->
+                <div id="room-inputs"></div>
+                <button type="submit">Next</button>
+            </form>
+        </div>
 
-    <!-- Meeting Options Modal -->
-    <div id="meeting-options-modal" class="hidden">
-        <h2>Call Meeting</h2>
-        <p>Select an option:</p>
-        <button id="body-found-button">Body Found</button>
-        <button id="no-body-found-button">No Body Found</button>
-        <button id="cancel-meeting-button">Cancel</button>
-    </div>
+        <!-- Meeting Options Modal -->
+        <div id="meeting-options-modal" class="hidden">
+            <h2>Call Meeting</h2>
+            <p>Select an option:</p>
+            <button id="body-found-button">Body Found</button>
+            <button id="no-body-found-button">No Body Found</button>
+            <button id="cancel-meeting-button">Cancel</button>
+        </div>
 
-    <!-- Select Dead Player Modal -->
-    <div id="select-dead-player-modal" class="hidden">
-        <h2>Select the Player You Found Dead</h2>
-        <select id="dead-player-select">
-            <!-- Options will be populated dynamically -->
-        </select>
-        <button id="dead-player-next-button">Next</button>
-        <button id="dead-player-cancel-button">Cancel</button>
-    </div>
+        <!-- Select Dead Player Modal -->
+        <div id="select-dead-player-modal" class="hidden">
+            <h2>Select the Player You Found Dead</h2>
+            <select id="dead-player-select">
+                <!-- Options will be populated dynamically -->
+            </select>
+            <button id="dead-player-next-button">Next</button>
+            <button id="dead-player-cancel-button">Cancel</button>
+        </div>
 
 
-    <!-- Select Room Modal -->
-    <div id="select-room-modal" class="hidden">
-        <h2>Select the Room Where You Found the Body</h2>
-        <select id="room-select">
-            <!-- Options will be populated dynamically -->
-        </select>
-        <button id="room-select-submit-button">Report Body</button>
-        <button id="room-select-cancel-button">Cancel</button>
-    </div>
-    <script>
-        let maxPlayers = 0;  // Store the maximum number of players
-        let currentAction = '';  // To track if we're creating or joining a lobby
-        let lobbyCode = '';  // Store the generated lobby code
-        let playerName = '';  // Store the current player's name
-        let pollingInterval;  // To hold the interval ID for polling
-        let roleRevealed = false;  // Track whether the role is currently revealed
-        let playerRole = '';       // Store the player's role
-        let roomNames = []; // To store the room names
-        let roomRevealed = false;  // Track whether the room is currently revealed
-        let playerRoom = '';       // Store the player's assigned room
-        let gameDuration = 0; // Store the game duration
-        let timerInterval;   // To hold the interval ID for the timer
-        let gameStartTime;   // Store the game start time
-        let gameDurationMs;  // Store the game duration in milliseconds
-        let meetingTimerInterval;       // To hold the interval ID for the meeting timer
-        let meetingStartTime;           // Store the meeting start time
-        let meetingDurationMs = 5 * 60 * 1000; // Meeting duration in milliseconds (5 minutes)
-        let isMeetingActive = false;    // Flag to check if a meeting is active
-        let hasVoted = false; // Flag to prevent multiple votes
-        let gameFeedback = ''; // Variable to store the selected feedback option
-        let roomInterval;  // To hold the interval ID for room assignment updates
-        let hasAlertedMeeting = false; // New variable to track meeting alerts
-        let countdownInterval; // Interval ID for the countdown
-        let countdownTime = 60; // Countdown time in seconds
-        let nextRoom = ''; // Store the next room assignment
+        <!-- Select Room Modal -->
+        <div id="select-room-modal" class="hidden">
+            <h2>Select the Room Where You Found the Body</h2>
+            <select id="room-select">
+                <!-- Options will be populated dynamically -->
+            </select>
+            <button id="room-select-submit-button">Report Body</button>
+            <button id="room-select-cancel-button">Cancel</button>
+        </div>
+        <script>
+            let maxPlayers = 0;  // Store the maximum number of players
+            let currentAction = '';  // To track if we're creating or joining a lobby
+            let lobbyCode = '';  // Store the generated lobby code
+            let playerName = '';  // Store the current player's name
+            let pollingInterval;  // To hold the interval ID for polling
+            let roleRevealed = false;  // Track whether the role is currently revealed
+            let playerRole = '';       // Store the player's role
+            let roomNames = []; // To store the room names
+            let roomRevealed = false;  // Track whether the room is currently revealed
+            let playerRoom = '';       // Store the player's assigned room
+            let gameDuration = 0; // Store the game duration
+            let timerInterval;   // To hold the interval ID for the timer
+            let gameStartTime;   // Store the game start time
+            let gameDurationMs;  // Store the game duration in milliseconds
+            let meetingTimerInterval;       // To hold the interval ID for the meeting timer
+            let meetingStartTime;           // Store the meeting start time
+            let meetingDurationMs = 5 * 60 * 1000; // Meeting duration in milliseconds (5 minutes)
+            let isMeetingActive = false;    // Flag to check if a meeting is active
+            let hasVoted = false; // Flag to prevent multiple votes
+            let gameFeedback = ''; // Variable to store the selected feedback option
+            let roomInterval;  // To hold the interval ID for room assignment updates
+            let hasAlertedMeeting = false; // New variable to track meeting alerts
+            let countdownInterval; // Interval ID for the countdown
+            let countdownTime = 60; // Countdown time in seconds
+            let nextRoom = ''; // Store the next room assignment
 
-        function fetchPlayerRole() {
-            // Fetch the player's role from the backend
-            return fetch(`/get_role/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
+            function fetchPlayerRole() {
+                // Fetch the player's role from the backend
+                return fetch(`/get_role/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.role) {
-                    playerRole = data.role;
-                } else {
-                    console.error('Error fetching role:', data.error);
-                    alert('Error fetching role: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching role:', error);
-                alert('An error occurred while fetching your role.');
-            });
-        }
+                .then(response => response.json())
+                .then(data => {
+                    if (data.role) {
+                        playerRole = data.role;
+                    } else {
+                        console.error('Error fetching role:', data.error);
+                        alert('Error fetching role: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching role:', error);
+                    alert('An error occurred while fetching your role.');
+                });
+            }
 
-        function toggleRole() {
-            if (!roleRevealed) {
-                if (!playerRole) {
-                    // Fetch the role if it hasn't been fetched yet
-                    fetchPlayerRole().then(() => {
+            function toggleRole() {
+                if (!roleRevealed) {
+                    if (!playerRole) {
+                        // Fetch the role if it hasn't been fetched yet
+                        fetchPlayerRole().then(() => {
+                            revealRole();
+                        });
+                    } else {
                         revealRole();
-                    });
-                } else {
-                    revealRole();
-                }
-            } else {
-                hideRole();
-            }
-        }
-
-        function revealRole() {
-            document.getElementById('role-display').innerText = `Your role is: ${playerRole}`;
-            document.getElementById('role-display').classList.remove('hidden');
-            document.getElementById('toggle-role-button').innerText = 'Hide Role';
-            roleRevealed = true;
-
-            // Disable the "Mark Yourself Dead" button if the player is the impostor
-            if (playerRole === 'impostor') {
-                document.getElementById('mark-dead-button').disabled = true;
-            }
-        }
-
-        function hideRole() {
-            document.getElementById('role-display').innerText = '';
-            document.getElementById('role-display').classList.add('hidden');
-            document.getElementById('toggle-role-button').innerText = 'Reveal Role';
-            roleRevealed = false;
-        }
-
-        function showCreateLobby() {
-            // Hide the initial screen
-            document.getElementById('initial-screen').classList.add('hidden');
-            // Show the create lobby section
-            document.getElementById('create-join-section').classList.remove('hidden');
-            document.getElementById('create-lobby-section').classList.remove('hidden');
-            document.getElementById('join-lobby-section').classList.add('hidden');
-        }
-
-        function showJoinLobby() {
-            // Hide the initial screen
-            document.getElementById('initial-screen').classList.add('hidden');
-            // Show the join lobby section
-            document.getElementById('create-join-section').classList.remove('hidden');
-            document.getElementById('join-lobby-section').classList.remove('hidden');
-            document.getElementById('create-lobby-section').classList.add('hidden');
-        }
-        
-        // Populate the Number of Players and Rooms Available Dropdowns
-        function populateDropdowns() {
-            const playersSelect = document.getElementById('players');
-            const roomsSelect = document.getElementById('rooms');
-            playersSelect.innerHTML = ''; // Clear existing options
-            roomsSelect.innerHTML = '';
-
-            // Populate Number of Players (min 4, max 10)
-            for (let i = 4; i <= 10; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.text = i;
-                playersSelect.appendChild(option);
-            }
-
-            // Populate Rooms Available (min 3, max 10)
-            for (let i = 3; i <= 10; i++) {
-                const option = document.createElement('option');
-                option.value = i;
-                option.text = i;
-                roomsSelect.appendChild(option);
-            }
-        }
-
-        // Call the function when the page loads
-        window.onload = function() {
-            populateDropdowns();
-        };
-
-        // Modify handleCreateLobby and handleJoinLobby to not hide the create-join-section immediately
-        function handleCreateLobby(event) {
-            event.preventDefault();
-            currentAction = 'create';
-            // Hide the create lobby section
-            document.getElementById('create-lobby-section').classList.add('hidden');
-            // Get the number of rooms and players
-            const numRooms = parseInt(document.getElementById('rooms').value);
-            const numPlayers = parseInt(document.getElementById('players').value);
-            maxPlayers = numPlayers; // Update the global maxPlayers variable
-            // Get the game duration
-            gameDuration = parseInt(document.getElementById('duration').value);
-            // Generate room input fields
-            generateRoomInputs(numRooms);
-            // Show the room names section
-            document.getElementById('room-names-section').classList.remove('hidden');
-        }
-
-        // Function to generate room input fields
-        function generateRoomInputs(numRooms) {
-            const roomInputsDiv = document.getElementById('room-inputs');
-            roomInputsDiv.innerHTML = '';  // Clear any existing inputs
-            for (let i = 1; i <= numRooms; i++) {
-                const inputDiv = document.createElement('div');
-                const label = document.createElement('label');
-                label.setAttribute('for', `room-${i}`);
-                label.innerText = `Room ${i}: `;
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.id = `room-${i}`;
-                input.name = `room-${i}`;
-                input.value = `room ${i}`;  // Default value
-                inputDiv.appendChild(label);
-                inputDiv.appendChild(input);
-                roomInputsDiv.appendChild(inputDiv);
-            }
-        }
-
-        // Function to handle room names submission
-        function handleRoomNames(event) {
-            event.preventDefault();
-            // Collect room names from inputs
-            const roomInputsDiv = document.getElementById('room-inputs');
-            const inputs = roomInputsDiv.getElementsByTagName('input');
-            roomNames = [];
-            for (let input of inputs) {
-                roomNames.push(input.value.trim());
-            }
-            // Hide the room names section
-            document.getElementById('room-names-section').classList.add('hidden');
-            // Proceed to ask for player name
-            document.getElementById("name-popup").classList.remove("hidden");
-        }
-
-        function handleJoinLobby(event) {
-            event.preventDefault();
-            const lobbyCodeInput = document.getElementById("join-code").value;
-            currentAction = 'join';  // Set current action to 'join'
-            // Check if the lobby exists before asking for the player's name
-            fetch("/check_lobby", {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    code: lobbyCodeInput
-                })
-            })
-            .then(response => {
-                if (response.status === 404) {
-                    // Show error message if lobby not found
-                    document.getElementById("error-message").classList.remove("hidden");
-                } else {
-                    return response.json();
-                }
-            })
-            .then(data => {
-                if (data) {
-                    // If lobby is found, ask for the player's name
-                    lobbyCode = lobbyCodeInput;
-                    document.getElementById("error-message").classList.add("hidden"); // Hide error message
-                    // Hide the join lobby section
-                    document.getElementById('join-lobby-section').classList.add('hidden');
-                    document.getElementById("name-popup").classList.remove("hidden");
-                }
-            })
-            .catch(error => {
-                console.error('Error checking lobby:', error);
-                alert('An error occurred while checking the lobby.');
-            });
-        }
-        
-        function submitPlayerName() {
-            playerName = document.getElementById("player-name").value;
-            if (playerName) {
-                document.getElementById("name-popup").classList.add("hidden");
-                document.getElementById("lobby-screen").classList.remove("hidden");
-                if (currentAction === 'create') {
-                    // Send player name and lobby data to backend (for creating)
-                    fetch("/create", {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            rooms: roomNames,  // Send the room names array
-                            players: document.getElementById("players").value,
-                            player_name: playerName,
-                            duration: gameDuration  // Include game duration
-                        })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Create response data:', data);
-                        lobbyCode = data.lobby_code;  // Assign the correct lobby code
-                        maxPlayers = parseInt(data.max_players); // Ensure it's an integer
-                        document.getElementById("lobby-code").innerText = lobbyCode;
-                        generatePlayerList(maxPlayers);
-                        updatePlayerList(data.player_names, data.ready_statuses, {}, false);
-                        startPolling();
-                    });
-                } else if (currentAction === 'join') {
-                    // Send player name and join code to backend (for joining)
-                    fetch("/join", {
-                        method: "POST",
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            code: lobbyCode,  // Use the correct lobby code here
-                            player_name: playerName
-                        })
-                    })
-                    .then(response => {
-                        if (!response.ok) {
-                            return response.json().then(err => { throw err; });
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        console.log('Join response data:', data);
-                        maxPlayers = parseInt(data.max_players); // Ensure it's an integer
-                        document.getElementById("lobby-code").innerText = data.lobby_code;
-                        generatePlayerList(maxPlayers);
-                        updatePlayerList(data.player_names, data.ready_statuses, {}, false);
-                        startPolling();
-                    })
-                    .catch(error => {
-                        console.error('Error joining lobby:', error);
-                        alert(error.error || 'An error occurred while joining the lobby.');
-                    });
-                }
-            }
-        }
-
-        // Function to generate the correct number of player slots based on max players
-        function generatePlayerList(maxPlayers) {
-            const playerList = document.getElementById("player-list");
-            playerList.innerHTML = '';  // Clear existing list
-            for (let i = 0; i < maxPlayers; i++) {
-                const row = document.createElement("tr");
-                const playerCell = document.createElement("td");
-                playerCell.id = `slot-${i + 1}`;
-                playerCell.innerText = 'Waiting for player...';
-                const statusCell = document.createElement("td");
-                statusCell.id = `status-${i + 1}`;
-                statusCell.innerText = '';
-                row.appendChild(playerCell);
-                row.appendChild(statusCell);
-                playerList.appendChild(row);
-            }
-        }
-
-        // Function to update the player list and ready statuses
-        function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}, gameStarted) {
-            // Create a mapping of player names to ready statuses
-            const readyStatusMap = {};
-            for (let i = 0; i < playerNames.length; i++) {
-                readyStatusMap[playerNames[i]] = readyStatuses[i];
-            }
-
-            for (let i = 0; i < maxPlayers; i++) {
-                const playerNameInSlot = playerNames[i] || 'Waiting for player...';
-                document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
-                const statusCell = document.getElementById(`status-${i + 1}`);
-
-                if (gameStarted) {
-                    // During the game, show 'alive' or 'dead'
-                    const playerStatus = playerStatuses[playerNameInSlot];
-                    statusCell.innerText = playerStatus ? playerStatus : '';
-                } else {
-                    // In the lobby, show 'Ready' or blank
-                    const readyStatus = readyStatusMap[playerNameInSlot];
-                    statusCell.innerText = readyStatus ? 'Ready' : '';
-                }
-            }
-        }
-
-        // Function to poll the server every 2 seconds to refresh the player list and ready statuses
-        function startPolling() {
-            pollingInterval = setInterval(() => {
-                fetch(`/lobby/${lobbyCode}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses, data.game_started);
-
-                        // Check if player is dead
-                        const playerStatus = data.player_statuses[playerName];
-                        if (playerStatus === 'dead') {
-                            document.getElementById('call-meeting-button').disabled = true;
-                            document.getElementById('toggle-room-button').disabled = true;
-                        }
-
-                        if (data.game_started) {
-                            if (!gameStartTime) {
-                                // Hide the lobby screen and show the game screen
-                                document.getElementById("lobby-screen").classList.add("hidden");
-                                document.getElementById("game-screen").classList.remove("hidden");
-                                // Fetch the player's role
-                                fetchPlayerRole();
-                                // Fetch the player's room
-                                fetchPlayerRoom();
-                                // Get the game duration from the backend (for joiners)
-                                gameDuration = data.duration;
-                                // Get the game start time from the backend
-                                gameStartTime = parseInt(data.game_start_time);
-                                startGameTimer();
-                            }
-
-                            // Meeting detection logic
-                            if (data.meeting_active) {
-                                if (!isMeetingActive) {
-                                    pauseGameTimer();
-                                    meetingStartTime = parseInt(data.meeting_start_time);
-                                    startMeetingTimer();
-                                    isMeetingActive = true;
-
-                                    // **Show alert if not already alerted**
-                                    if (!hasAlertedMeeting) {
-                                        alert('A meeting has been called!');
-                                        hasAlertedMeeting = true;
-                                    }
-                                } else {
-                                    // Update voting table
-                                    populateVotingTable();
-                                }
-                            } else {
-                                if (isMeetingActive) {
-                                    // Meeting has ended
-                                    clearInterval(meetingTimerInterval);
-                                    document.getElementById('meeting-timer-section').classList.add('hidden');
-                                    document.getElementById('voting-section').classList.add('hidden');
-                                    hasVoted = false;
-                                    isMeetingActive = false;
-                                    hasAlertedMeeting = false; // **Reset the alert flag**
-                                    resumeGameTimer();
-                                    // Update the activity log
-                                    updateActivityLog();
-                                }
-                            }
-                        }
-
-                        // Update the activity log
-                        updateActivityLog();
-
-                        // Check if the game is over
-                        if (data.game_over) {
-                            clearInterval(pollingInterval);
-                            clearInterval(timerInterval);
-                            clearInterval(meetingTimerInterval);
-
-                            // Display the game over message using the message from the backend
-                            displayGameOver(data.game_over_message);
-                        }
-                    });
-            }, 2000);
-        }
-
-        // Function to send the ready status to the server and update the player's status in the table
-        function setReadyStatus() {
-            fetch(`/ready/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(() => {
-                // Disable the Ready button
-                document.getElementById("ready-button").disabled = true;
-            });
-        }
-
-        function fetchPlayerRoom() {
-            // Fetch the player's room from the backend
-            return fetch(`/get_room/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.room) {
-                    // Update the player's room
-                    playerRoom = data.room;
-                    // Update the room display if it's revealed
-                    if (roomRevealed) {
-                        document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
                     }
                 } else {
-                    console.error('Error fetching room:', data.error);
-                    alert('Error fetching room: ' + data.error);
+                    hideRole();
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching room:', error);
-                alert('An error occurred while fetching your room.');
-            });
-        }
-
-        function toggleRoom() {
-            if (!roomRevealed) {
-                revealRoom();
-            } else {
-                hideRoom();
-            }
-        }
-
-        function startRoomCountdown() {
-            if (!nextRoom || countdownTime <= 0) {
-                return; // No next room assigned or countdown time invalid
             }
 
-            // Display the next room
-            document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
-            document.getElementById('next-room-display').classList.remove('hidden');
+            function revealRole() {
+                document.getElementById('role-display').innerText = `Your role is: ${playerRole}`;
+                document.getElementById('role-display').classList.remove('hidden');
+                document.getElementById('toggle-role-button').innerText = 'Hide Role';
+                roleRevealed = true;
 
-            // Start the countdown
-            updateCountdownDisplay();
-            if (!countdownInterval) {
-                countdownInterval = setInterval(() => {
-                    countdownTime--;
-                    if (countdownTime <= 0) {
-                        clearInterval(countdownInterval);
-                        countdownInterval = null;
-                        // Switch to the next room
-                        playerRoom = nextRoom;
-                        nextRoom = null;
-                        // Update the room display
+                // Disable the "Mark Yourself Dead" button if the player is the impostor
+                if (playerRole === 'impostor') {
+                    document.getElementById('mark-dead-button').disabled = true;
+                }
+            }
+
+            function hideRole() {
+                document.getElementById('role-display').innerText = '';
+                document.getElementById('role-display').classList.add('hidden');
+                document.getElementById('toggle-role-button').innerText = 'Reveal Role';
+                roleRevealed = false;
+            }
+
+            function showCreateLobby() {
+                // Hide the initial screen
+                document.getElementById('initial-screen').classList.add('hidden');
+                // Show the create lobby section
+                document.getElementById('create-join-section').classList.remove('hidden');
+                document.getElementById('create-lobby-section').classList.remove('hidden');
+                document.getElementById('join-lobby-section').classList.add('hidden');
+            }
+
+            function showJoinLobby() {
+                // Hide the initial screen
+                document.getElementById('initial-screen').classList.add('hidden');
+                // Show the join lobby section
+                document.getElementById('create-join-section').classList.remove('hidden');
+                document.getElementById('join-lobby-section').classList.remove('hidden');
+                document.getElementById('create-lobby-section').classList.add('hidden');
+            }
+            
+            // Populate the Number of Players and Rooms Available Dropdowns
+            function populateDropdowns() {
+                const playersSelect = document.getElementById('players');
+                const roomsSelect = document.getElementById('rooms');
+                playersSelect.innerHTML = ''; // Clear existing options
+                roomsSelect.innerHTML = '';
+
+                // Populate Number of Players (min 4, max 10)
+                for (let i = 4; i <= 10; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.text = i;
+                    playersSelect.appendChild(option);
+                }
+
+                // Populate Rooms Available (min 3, max 10)
+                for (let i = 3; i <= 10; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.text = i;
+                    roomsSelect.appendChild(option);
+                }
+            }
+
+            // Call the function when the page loads
+            window.onload = function() {
+                populateDropdowns();
+            };
+
+            // Modify handleCreateLobby and handleJoinLobby to not hide the create-join-section immediately
+            function handleCreateLobby(event) {
+                event.preventDefault();
+                currentAction = 'create';
+                // Hide the create lobby section
+                document.getElementById('create-lobby-section').classList.add('hidden');
+                // Get the number of rooms and players
+                const numRooms = parseInt(document.getElementById('rooms').value);
+                const numPlayers = parseInt(document.getElementById('players').value);
+                maxPlayers = numPlayers; // Update the global maxPlayers variable
+                // Get the game duration
+                gameDuration = parseInt(document.getElementById('duration').value);
+                // Generate room input fields
+                generateRoomInputs(numRooms);
+                // Show the room names section
+                document.getElementById('room-names-section').classList.remove('hidden');
+            }
+
+            // Function to generate room input fields
+            function generateRoomInputs(numRooms) {
+                const roomInputsDiv = document.getElementById('room-inputs');
+                roomInputsDiv.innerHTML = '';  // Clear any existing inputs
+                for (let i = 1; i <= numRooms; i++) {
+                    const inputDiv = document.createElement('div');
+                    const label = document.createElement('label');
+                    label.setAttribute('for', `room-${i}`);
+                    label.innerText = `Room ${i}: `;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = `room-${i}`;
+                    input.name = `room-${i}`;
+                    input.value = `room ${i}`;  // Default value
+                    inputDiv.appendChild(label);
+                    inputDiv.appendChild(input);
+                    roomInputsDiv.appendChild(inputDiv);
+                }
+            }
+
+            // Function to handle room names submission
+            function handleRoomNames(event) {
+                event.preventDefault();
+                // Collect room names from inputs
+                const roomInputsDiv = document.getElementById('room-inputs');
+                const inputs = roomInputsDiv.getElementsByTagName('input');
+                roomNames = [];
+                for (let input of inputs) {
+                    roomNames.push(input.value.trim());
+                }
+                // Hide the room names section
+                document.getElementById('room-names-section').classList.add('hidden');
+                // Proceed to ask for player name
+                document.getElementById("name-popup").classList.remove("hidden");
+            }
+
+            function handleJoinLobby(event) {
+                event.preventDefault();
+                const lobbyCodeInput = document.getElementById("join-code").value;
+                currentAction = 'join';  // Set current action to 'join'
+                // Check if the lobby exists before asking for the player's name
+                fetch("/check_lobby", {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        code: lobbyCodeInput
+                    })
+                })
+                .then(response => {
+                    if (response.status === 404) {
+                        // Show error message if lobby not found
+                        document.getElementById("error-message").classList.remove("hidden");
+                    } else {
+                        return response.json();
+                    }
+                })
+                .then(data => {
+                    if (data) {
+                        // If lobby is found, ask for the player's name
+                        lobbyCode = lobbyCodeInput;
+                        document.getElementById("error-message").classList.add("hidden"); // Hide error message
+                        // Hide the join lobby section
+                        document.getElementById('join-lobby-section').classList.add('hidden');
+                        document.getElementById("name-popup").classList.remove("hidden");
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking lobby:', error);
+                    alert('An error occurred while checking the lobby.');
+                });
+            }
+            
+            function submitPlayerName() {
+                playerName = document.getElementById("player-name").value;
+                if (playerName) {
+                    document.getElementById("name-popup").classList.add("hidden");
+                    document.getElementById("lobby-screen").classList.remove("hidden");
+                    if (currentAction === 'create') {
+                        // Send player name and lobby data to backend (for creating)
+                        fetch("/create", {
+                            method: "POST",
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                rooms: roomNames,  // Send the room names array
+                                players: document.getElementById("players").value,
+                                player_name: playerName,
+                                duration: gameDuration  // Include game duration
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            console.log('Create response data:', data);
+                            lobbyCode = data.lobby_code;  // Assign the correct lobby code
+                            maxPlayers = parseInt(data.max_players); // Ensure it's an integer
+                            document.getElementById("lobby-code").innerText = lobbyCode;
+                            generatePlayerList(maxPlayers);
+                            updatePlayerList(data.player_names, data.ready_statuses, {}, false);
+                            startPolling();
+                        });
+                    } else if (currentAction === 'join') {
+                        // Send player name and join code to backend (for joining)
+                        fetch("/join", {
+                            method: "POST",
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                code: lobbyCode,  // Use the correct lobby code here
+                                player_name: playerName
+                            })
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                return response.json().then(err => { throw err; });
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            console.log('Join response data:', data);
+                            maxPlayers = parseInt(data.max_players); // Ensure it's an integer
+                            document.getElementById("lobby-code").innerText = data.lobby_code;
+                            generatePlayerList(maxPlayers);
+                            updatePlayerList(data.player_names, data.ready_statuses, {}, false);
+                            startPolling();
+                        })
+                        .catch(error => {
+                            console.error('Error joining lobby:', error);
+                            alert(error.error || 'An error occurred while joining the lobby.');
+                        });
+                    }
+                }
+            }
+
+            // Function to generate the correct number of player slots based on max players
+            function generatePlayerList(maxPlayers) {
+                const playerList = document.getElementById("player-list");
+                playerList.innerHTML = '';  // Clear existing list
+                for (let i = 0; i < maxPlayers; i++) {
+                    const row = document.createElement("tr");
+                    const playerCell = document.createElement("td");
+                    playerCell.id = `slot-${i + 1}`;
+                    playerCell.innerText = 'Waiting for player...';
+                    const statusCell = document.createElement("td");
+                    statusCell.id = `status-${i + 1}`;
+                    statusCell.innerText = '';
+                    row.appendChild(playerCell);
+                    row.appendChild(statusCell);
+                    playerList.appendChild(row);
+                }
+            }
+
+            // Function to update the player list and ready statuses
+            function updatePlayerList(playerNames, readyStatuses, playerStatuses = {}, gameStarted) {
+                // Create a mapping of player names to ready statuses
+                const readyStatusMap = {};
+                for (let i = 0; i < playerNames.length; i++) {
+                    readyStatusMap[playerNames[i]] = readyStatuses[i];
+                }
+
+                for (let i = 0; i < maxPlayers; i++) {
+                    const playerNameInSlot = playerNames[i] || 'Waiting for player...';
+                    document.getElementById(`slot-${i + 1}`).innerText = playerNameInSlot;
+                    const statusCell = document.getElementById(`status-${i + 1}`);
+
+                    if (gameStarted) {
+                        // During the game, show 'alive' or 'dead'
+                        const playerStatus = playerStatuses[playerNameInSlot];
+                        statusCell.innerText = playerStatus ? playerStatus : '';
+                    } else {
+                        // In the lobby, show 'Ready' or blank
+                        const readyStatus = readyStatusMap[playerNameInSlot];
+                        statusCell.innerText = readyStatus ? 'Ready' : '';
+                    }
+                }
+            }
+
+            // Function to poll the server every 2 seconds to refresh the player list and ready statuses
+            function startPolling() {
+                pollingInterval = setInterval(() => {
+                    fetch(`/lobby/${lobbyCode}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            updatePlayerList(data.player_names, data.ready_statuses, data.player_statuses, data.game_started);
+
+                            // Check if player is dead
+                            const playerStatus = data.player_statuses[playerName];
+                            if (playerStatus === 'dead') {
+                                document.getElementById('call-meeting-button').disabled = true;
+                                document.getElementById('toggle-room-button').disabled = true;
+                            }
+
+                            if (data.game_started) {
+                                if (!gameStartTime) {
+                                    // Hide the lobby screen and show the game screen
+                                    document.getElementById("lobby-screen").classList.add("hidden");
+                                    document.getElementById("game-screen").classList.remove("hidden");
+                                    // Fetch the player's role
+                                    fetchPlayerRole();
+                                    // Fetch the player's room
+                                    fetchPlayerRoom();
+                                    // Get the game duration from the backend (for joiners)
+                                    gameDuration = data.duration;
+                                    // Get the game start time from the backend
+                                    gameStartTime = parseInt(data.game_start_time);
+                                    startGameTimer();
+                                }
+
+                                // Meeting detection logic
+                                if (data.meeting_active) {
+                                    if (!isMeetingActive) {
+                                        pauseGameTimer();
+                                        meetingStartTime = parseInt(data.meeting_start_time);
+                                        startMeetingTimer();
+                                        isMeetingActive = true;
+
+                                        // **Show alert if not already alerted**
+                                        if (!hasAlertedMeeting) {
+                                            alert('A meeting has been called!');
+                                            hasAlertedMeeting = true;
+                                        }
+                                    } else {
+                                        // Update voting table
+                                        populateVotingTable();
+                                    }
+                                } else {
+                                    if (isMeetingActive) {
+                                        // Meeting has ended
+                                        clearInterval(meetingTimerInterval);
+                                        document.getElementById('meeting-timer-section').classList.add('hidden');
+                                        document.getElementById('voting-section').classList.add('hidden');
+                                        hasVoted = false;
+                                        isMeetingActive = false;
+                                        hasAlertedMeeting = false; // **Reset the alert flag**
+                                        resumeGameTimer();
+                                        // Update the activity log
+                                        updateActivityLog();
+                                    }
+                                }
+                            }
+
+                            // Update the activity log
+                            updateActivityLog();
+
+                            // Check if the game is over
+                            if (data.game_over) {
+                                clearInterval(pollingInterval);
+                                clearInterval(timerInterval);
+                                clearInterval(meetingTimerInterval);
+
+                                // Display the game over message using the message from the backend
+                                displayGameOver(data.game_over_message);
+                            }
+                        });
+                }, 2000);
+            }
+
+            // Function to send the ready status to the server and update the player's status in the table
+            function setReadyStatus() {
+                fetch(`/ready/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(() => {
+                    // Disable the Ready button
+                    document.getElementById("ready-button").disabled = true;
+                });
+            }
+
+            function fetchPlayerRoom() {
+                // Fetch the player's room from the backend
+                return fetch(`/get_room/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.room) {
+                        // Update the player's room
+                        playerRoom = data.room;
+                        // Update the room display if it's revealed
                         if (roomRevealed) {
                             document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
                         }
+                    } else {
+                        console.error('Error fetching room:', data.error);
+                        alert('Error fetching room: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching room:', error);
+                    alert('An error occurred while fetching your room.');
+                });
+            }
+
+            function toggleRoom() {
+                if (!roomRevealed) {
+                    revealRoom();
+                } else {
+                    hideRoom();
+                }
+            }
+
+            function startRoomCountdown() {
+                if (!nextRoom || countdownTime <= 0) {
+                    return; // No next room assigned or countdown time invalid
+                }
+
+                // Display the next room
+                document.getElementById('next-room-display').innerText = `You will move to: ${nextRoom}`;
+                document.getElementById('next-room-display').classList.remove('hidden');
+
+                // Start the countdown
+                updateCountdownDisplay();
+                if (!countdownInterval) {
+                    countdownInterval = setInterval(() => {
+                        countdownTime--;
+                        if (countdownTime <= 0) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                            // Switch to the next room
+                            playerRoom = nextRoom;
+                            nextRoom = null;
+                            // Update the room display
+                            if (roomRevealed) {
+                                document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
+                            }
+                            // Hide the countdown and next room display
+                            document.getElementById('countdown-display').classList.add('hidden');
+                            document.getElementById('next-room-display').classList.add('hidden');
+                        } else {
+                            updateCountdownDisplay();
+                        }
+                    }, 1000); // Update every second
+                }
+            }
+
+            // Start polling for next room assignments every 10 seconds
+            setInterval(() => {
+                fetchNextRoomAssignment();
+            }, 10000); // 10000 milliseconds = 10 seconds
+
+            function fetchNextRoomAssignment() {
+                return fetch(`/get_next_room/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.next_room) {
+                        nextRoom = data.next_room;
+                        // Set countdownTime based on server-provided time
+                        countdownTime = Math.ceil(data.time_until_switch / 1000); // Convert ms to seconds
+                        // Ensure countdownTime is at least 0
+                        countdownTime = Math.max(countdownTime, 0);
+                        // Start the countdown
+                        if (roomRevealed) {
+                            startRoomCountdown();
+                        }
+                    } else {
+                        // No new room assigned
+                        nextRoom = null;
                         // Hide the countdown and next room display
                         document.getElementById('countdown-display').classList.add('hidden');
                         document.getElementById('next-room-display').classList.add('hidden');
-                    } else {
-                        updateCountdownDisplay();
+                        // Clear countdown if running
+                        if (countdownInterval) {
+                            clearInterval(countdownInterval);
+                            countdownInterval = null;
+                        }
                     }
-                }, 1000); // Update every second
-            }
-        }
-
-        // Start polling for next room assignments every 10 seconds
-        setInterval(() => {
-            fetchNextRoomAssignment();
-        }, 10000); // 10000 milliseconds = 10 seconds
-
-        function fetchNextRoomAssignment() {
-            return fetch(`/get_next_room/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.next_room) {
-                    nextRoom = data.next_room;
-                    // Set countdownTime based on server-provided time
-                    countdownTime = Math.ceil(data.time_until_switch / 1000); // Convert ms to seconds
-                    // Ensure countdownTime is at least 0
-                    countdownTime = Math.max(countdownTime, 0);
-                    // Start the countdown
-                    if (roomRevealed) {
-                        startRoomCountdown();
-                    }
-                } else {
-                    // No new room assigned
-                    nextRoom = null;
-                    // Hide the countdown and next room display
-                    document.getElementById('countdown-display').classList.add('hidden');
-                    document.getElementById('next-room-display').classList.add('hidden');
-                    // Clear countdown if running
-                    if (countdownInterval) {
-                        clearInterval(countdownInterval);
-                        countdownInterval = null;
-                    }
+                .catch(error => {
+                    console.error('Error fetching next room:', error);
+                    // Handle error appropriately
+                });
+            }
+
+            function updateCountdownDisplay() {
+                document.getElementById('countdown-display').innerText = `Time left until room switch: ${countdownTime} seconds`;
+                document.getElementById('countdown-display').classList.remove('hidden');
+            }
+
+            function revealRoom() {
+                document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
+                document.getElementById('room-display').classList.remove('hidden');
+                document.getElementById('toggle-room-button').innerText = 'Hide Room';
+                roomRevealed = true;
+
+                // If a next room is already assigned, start the countdown
+                if (nextRoom && countdownTime > 0) {
+                    startRoomCountdown();
                 }
-            })
-            .catch(error => {
-                console.error('Error fetching next room:', error);
-                // Handle error appropriately
-            });
-        }
-
-        function updateCountdownDisplay() {
-            document.getElementById('countdown-display').innerText = `Time left until room switch: ${countdownTime} seconds`;
-            document.getElementById('countdown-display').classList.remove('hidden');
-        }
-
-        function revealRoom() {
-            document.getElementById('room-display').innerText = `Your current room is: ${playerRoom}`;
-            document.getElementById('room-display').classList.remove('hidden');
-            document.getElementById('toggle-room-button').innerText = 'Hide Room';
-            roomRevealed = true;
-
-            // If a next room is already assigned, start the countdown
-            if (nextRoom && countdownTime > 0) {
-                startRoomCountdown();
             }
-        }
 
-        function hideRoom() {
-            document.getElementById('room-display').innerText = '';
-            document.getElementById('room-display').classList.add('hidden');
-            document.getElementById('countdown-display').innerText = '';
-            document.getElementById('countdown-display').classList.add('hidden');
-            document.getElementById('next-room-display').innerText = '';
-            document.getElementById('next-room-display').classList.add('hidden');
-            document.getElementById('toggle-room-button').innerText = 'Reveal Room';
-            roomRevealed = false;
+            function hideRoom() {
+                document.getElementById('room-display').innerText = '';
+                document.getElementById('room-display').classList.add('hidden');
+                document.getElementById('countdown-display').innerText = '';
+                document.getElementById('countdown-display').classList.add('hidden');
+                document.getElementById('next-room-display').innerText = '';
+                document.getElementById('next-room-display').classList.add('hidden');
+                document.getElementById('toggle-room-button').innerText = 'Reveal Room';
+                roomRevealed = false;
 
-            // Clear the countdown interval if it's running
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-                countdownInterval = null;
+                // Clear the countdown interval if it's running
+                if (countdownInterval) {
+                    clearInterval(countdownInterval);
+                    countdownInterval = null;
+                }
             }
-        }
 
-        function startGameTimer() {
-            gameStartTime = parseInt(gameStartTime);
+            function startGameTimer() {
+                gameStartTime = parseInt(gameStartTime);
 
-            // Calculate the game duration in milliseconds
-            gameDurationMs = gameDuration * 60 * 1000;
+                // Calculate the game duration in milliseconds
+                gameDurationMs = gameDuration * 60 * 1000;
 
-            // Calculate the offset between client and server time
-            const clientTimeNow = Date.now();
-            serverTimeOffset = clientTimeNow - gameStartTime;
+                // Calculate the offset between client and server time
+                const clientTimeNow = Date.now();
+                serverTimeOffset = clientTimeNow - gameStartTime;
 
-            updateTimerDisplay();
-
-            timerInterval = setInterval(() => {
                 updateTimerDisplay();
-            }, 10);
 
-            // Fetch and display the player's room immediately
-            fetchPlayerRoom();
+                timerInterval = setInterval(() => {
+                    updateTimerDisplay();
+                }, 10);
 
-            // Start fetching room assignments every 5 seconds
-            roomInterval = setInterval(() => {
+                // Fetch and display the player's room immediately
                 fetchPlayerRoom();
-            }, 5000); // 5000 milliseconds = 5 seconds
-        }
 
-        // Function to pause the game timer
-        function pauseGameTimer() {
-            clearInterval(timerInterval);
-        }
-
-        // Function to resume the game timer
-        function resumeGameTimer() {
-            // Ensure variables are numbers
-            meetingStartTime = parseInt(meetingStartTime);
-            gameStartTime = parseInt(gameStartTime);
-
-            // Adjust the game start time to account for the actual paused duration
-            const pausedDuration = Date.now() - meetingStartTime - meetingServerTimeOffset;
-            gameStartTime += pausedDuration;
-
-            timerInterval = setInterval(() => {
-                updateTimerDisplay();
-            }, 10);
-        }
-
-        // Function to start the meeting timer
-        function startMeetingTimer() {
-            meetingStartTime = parseInt(meetingStartTime);
-
-            // Calculate the offset between client and server time
-            const clientTimeNow = Date.now();
-            meetingServerTimeOffset = clientTimeNow - meetingStartTime;
-
-            document.getElementById('meeting-timer-section').classList.remove('hidden');
-
-            // Show the voting section
-            document.getElementById('voting-section').classList.remove('hidden');
-            populateVotingTable();
-
-            updateMeetingTimerDisplay();
-
-            meetingTimerInterval = setInterval(() => {
-                updateMeetingTimerDisplay();
-            }, 10);
-        }
-
-        // Function to update the meeting timer display
-        function updateMeetingTimerDisplay() {
-            const currentTime = Date.now() - meetingServerTimeOffset;
-            const elapsedTime = currentTime - meetingStartTime;
-            const remainingTime = meetingDurationMs - elapsedTime;
-
-            if (remainingTime <= 0) {
-                document.getElementById('meeting-timer-display').innerText = '00:00:00';
-                
-                // Clear the meeting timer interval
-                clearInterval(meetingTimerInterval);
-                // Set the meeting as inactive
-                isMeetingActive = false;
-                // Inform the backend that the meeting timer has expired
-                meetingTimerExpired();
-
-                return;
+                // Start fetching room assignments every 5 seconds
+                roomInterval = setInterval(() => {
+                    fetchPlayerRoom();
+                }, 5000); // 5000 milliseconds = 5 seconds
             }
 
-            const minutes = Math.floor(remainingTime / 60000);
-            const seconds = Math.floor((remainingTime % 60000) / 1000);
-            const centiseconds = Math.floor((remainingTime % 1000) / 10);
-
-            const formattedMinutes = String(minutes).padStart(2, '0');
-            const formattedSeconds = String(seconds).padStart(2, '0');
-            const formattedCentiseconds = String(centiseconds).padStart(2, '0');
-
-            document.getElementById('meeting-timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
-        }
-
-        // Logic for when meeting timer runs out since this doesn't work automatically
-        function meetingTimerExpired() {
-            fetch(`/meeting_expired/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'Meeting expired and votes processed') {
-                    // Resume the game timer
-                    resumeGameTimer();
-                    // Hide meeting-related sections
-                    document.getElementById('meeting-timer-section').classList.add('hidden');
-                    document.getElementById('voting-section').classList.add('hidden');
-                    hasVoted = false;
-                    // Update the activity log
-                    updateActivityLog();
-                } else {
-                    console.error('Error processing expired meeting:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error processing expired meeting:', error);
-            });
-        }
-
-        // Function to handle "Call Meeting" button click
-        function callMeeting() {
-            // Display the meeting options modal
-            document.getElementById('meeting-options-modal').classList.remove('hidden');
-        }
-
-        // Event listeners for the modal buttons
-        document.getElementById('body-found-button').addEventListener('click', () => {
-            // Close the modal
-            document.getElementById('meeting-options-modal').classList.add('hidden');
-            // Proceed to select dead player and room
-            selectDeadPlayerAndRoom();
-        });
-
-        document.getElementById('no-body-found-button').addEventListener('click', () => {
-            // Close the modal
-            document.getElementById('meeting-options-modal').classList.add('hidden');
-            // Start meeting without body found
-            startMeetingWithoutBody();
-        });
-
-        document.getElementById('cancel-meeting-button').addEventListener('click', () => {
-            // Close the modal
-            document.getElementById('meeting-options-modal').classList.add('hidden');
-            // Do nothing
-        });
-
-        function markYourselfDead() {
-            // Send a request to the backend to mark yourself dead
-            fetch(`/mark_dead/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'You are now marked as dead') {
-                    alert('You have been marked as dead.');
-                    // Update your status in the UI
-                    // Optionally, disable the button
-                    document.getElementById('mark-dead-button').disabled = true;
-                } else if (data.error) {
-                    alert(data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error marking yourself dead:', error);
-                alert('An error occurred while processing your request.');
-            });
-        }
-
-        function startMeetingWithoutBody() {
-            fetch(`/call_meeting/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName,
-                    body_found: false
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message !== 'Meeting started') {
-                    alert('Unable to start meeting: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error calling meeting:', error);
-                alert('An error occurred while calling the meeting.');
-            });
-        }
-
-        // Modify updateTimerDisplay to check if the game timer should be paused
-        function updateTimerDisplay() {
-            if (isMeetingActive) {
-                return; // Do not update the game timer while meeting is active
-            }
-
-            const currentTime = Date.now() - serverTimeOffset;
-            const elapsedTime = currentTime - gameStartTime;
-            const remainingTime = gameDurationMs - elapsedTime;
-
-            if (remainingTime <= 0) {
+            // Function to pause the game timer
+            function pauseGameTimer() {
                 clearInterval(timerInterval);
-                document.getElementById('timer-display').innerText = '00:00:00';
-                
-                // Inform the backend that the game time has expired
-                gameTimeExpired();
-
-                return;
             }
 
-            const minutes = Math.floor(remainingTime / 60000);
-            const seconds = Math.floor((remainingTime % 60000) / 1000);
-            const centiseconds = Math.floor((remainingTime % 1000) / 10);
+            // Function to resume the game timer
+            function resumeGameTimer() {
+                // Ensure variables are numbers
+                meetingStartTime = parseInt(meetingStartTime);
+                gameStartTime = parseInt(gameStartTime);
 
-            const formattedMinutes = String(minutes).padStart(2, '0');
-            const formattedSeconds = String(seconds).padStart(2, '0');
-            const formattedCentiseconds = String(centiseconds).padStart(2, '0');
+                // Adjust the game start time to account for the actual paused duration
+                const pausedDuration = Date.now() - meetingStartTime - meetingServerTimeOffset;
+                gameStartTime += pausedDuration;
 
-            document.getElementById('timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
-        }
+                timerInterval = setInterval(() => {
+                    updateTimerDisplay();
+                }, 10);
+            }
 
-        // Function to populate the voting table
-        function populateVotingTable() {
-            fetch(`/lobby/${lobbyCode}`)
+            // Function to start the meeting timer
+            function startMeetingTimer() {
+                meetingStartTime = parseInt(meetingStartTime);
+
+                // Calculate the offset between client and server time
+                const clientTimeNow = Date.now();
+                meetingServerTimeOffset = clientTimeNow - meetingStartTime;
+
+                document.getElementById('meeting-timer-section').classList.remove('hidden');
+
+                // Show the voting section
+                document.getElementById('voting-section').classList.remove('hidden');
+                populateVotingTable();
+
+                updateMeetingTimerDisplay();
+
+                meetingTimerInterval = setInterval(() => {
+                    updateMeetingTimerDisplay();
+                }, 10);
+            }
+
+            // Function to update the meeting timer display
+            function updateMeetingTimerDisplay() {
+                const currentTime = Date.now() - meetingServerTimeOffset;
+                const elapsedTime = currentTime - meetingStartTime;
+                const remainingTime = meetingDurationMs - elapsedTime;
+
+                if (remainingTime <= 0) {
+                    document.getElementById('meeting-timer-display').innerText = '00:00:00';
+                    
+                    // Clear the meeting timer interval
+                    clearInterval(meetingTimerInterval);
+                    // Set the meeting as inactive
+                    isMeetingActive = false;
+                    // Inform the backend that the meeting timer has expired
+                    meetingTimerExpired();
+
+                    return;
+                }
+
+                const minutes = Math.floor(remainingTime / 60000);
+                const seconds = Math.floor((remainingTime % 60000) / 1000);
+                const centiseconds = Math.floor((remainingTime % 1000) / 10);
+
+                const formattedMinutes = String(minutes).padStart(2, '0');
+                const formattedSeconds = String(seconds).padStart(2, '0');
+                const formattedCentiseconds = String(centiseconds).padStart(2, '0');
+
+                document.getElementById('meeting-timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
+            }
+
+            // Logic for when meeting timer runs out since this doesn't work automatically
+            function meetingTimerExpired() {
+                fetch(`/meeting_expired/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'Meeting expired and votes processed') {
+                        // Resume the game timer
+                        resumeGameTimer();
+                        // Hide meeting-related sections
+                        document.getElementById('meeting-timer-section').classList.add('hidden');
+                        document.getElementById('voting-section').classList.add('hidden');
+                        hasVoted = false;
+                        // Update the activity log
+                        updateActivityLog();
+                    } else {
+                        console.error('Error processing expired meeting:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error processing expired meeting:', error);
+                });
+            }
+
+            // Function to handle "Call Meeting" button click
+            function callMeeting() {
+                // Display the meeting options modal
+                document.getElementById('meeting-options-modal').classList.remove('hidden');
+            }
+
+            // Event listeners for the modal buttons
+            document.getElementById('body-found-button').addEventListener('click', () => {
+                // Close the modal
+                document.getElementById('meeting-options-modal').classList.add('hidden');
+                // Proceed to select dead player and room
+                selectDeadPlayerAndRoom();
+            });
+
+            document.getElementById('no-body-found-button').addEventListener('click', () => {
+                // Close the modal
+                document.getElementById('meeting-options-modal').classList.add('hidden');
+                // Start meeting without body found
+                startMeetingWithoutBody();
+            });
+
+            document.getElementById('cancel-meeting-button').addEventListener('click', () => {
+                // Close the modal
+                document.getElementById('meeting-options-modal').classList.add('hidden');
+                // Do nothing
+            });
+
+            function markYourselfDead() {
+                // Send a request to the backend to mark yourself dead
+                fetch(`/mark_dead/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'You are now marked as dead') {
+                        alert('You have been marked as dead.');
+                        // Update your status in the UI
+                        // Optionally, disable the button
+                        document.getElementById('mark-dead-button').disabled = true;
+                    } else if (data.error) {
+                        alert(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error marking yourself dead:', error);
+                    alert('An error occurred while processing your request.');
+                });
+            }
+
+            function startMeetingWithoutBody() {
+                fetch(`/call_meeting/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName,
+                        body_found: false
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message !== 'Meeting started') {
+                        alert('Unable to start meeting: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error calling meeting:', error);
+                    alert('An error occurred while calling the meeting.');
+                });
+            }
+
+            // Modify updateTimerDisplay to check if the game timer should be paused
+            function updateTimerDisplay() {
+                if (isMeetingActive) {
+                    return; // Do not update the game timer while meeting is active
+                }
+
+                const currentTime = Date.now() - serverTimeOffset;
+                const elapsedTime = currentTime - gameStartTime;
+                const remainingTime = gameDurationMs - elapsedTime;
+
+                if (remainingTime <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timer-display').innerText = '00:00:00';
+                    
+                    // Inform the backend that the game time has expired
+                    gameTimeExpired();
+
+                    return;
+                }
+
+                const minutes = Math.floor(remainingTime / 60000);
+                const seconds = Math.floor((remainingTime % 60000) / 1000);
+                const centiseconds = Math.floor((remainingTime % 1000) / 10);
+
+                const formattedMinutes = String(minutes).padStart(2, '0');
+                const formattedSeconds = String(seconds).padStart(2, '0');
+                const formattedCentiseconds = String(centiseconds).padStart(2, '0');
+
+                document.getElementById('timer-display').innerText = `${formattedMinutes}:${formattedSeconds}:${formattedCentiseconds}`;
+            }
+
+            // Function to populate the voting table
+            function populateVotingTable() {
+                fetch(`/lobby/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const playerNames = data.player_names;
+                        const hasVotedData = data.has_voted || {};
+                        const playerStatuses = data.player_statuses || {};
+                        const votingTableBody = document.getElementById('voting-table-body');
+
+                        // Create a DocumentFragment to build the new table content
+                        const fragment = document.createDocumentFragment();
+
+                        playerNames.forEach(player => {
+                            const row = document.createElement('tr');
+
+                            // Player name cell
+                            const playerCell = document.createElement('td');
+                            playerCell.innerText = player;
+                            row.appendChild(playerCell);
+
+                            // Status cell
+                            const statusCell = document.createElement('td');
+                            statusCell.innerText = playerStatuses[player] || 'unknown';
+                            row.appendChild(statusCell);
+
+                            // Vote button or status cell
+                            const voteCell = document.createElement('td');
+
+                            if (playerStatuses[playerName] !== 'alive') {
+                                voteCell.innerText = 'You are dead';
+                            } else if (playerStatuses[player] !== 'alive') {
+                                voteCell.innerText = `${player} is dead`;
+                            } else if (player === playerName) {
+                                voteCell.innerText = 'You cannot vote for yourself';
+                            } else if (hasVoted) {
+                                voteCell.innerText = 'Vote submitted';
+                            } else if (hasVotedData[playerName]) {
+                                voteCell.innerText = 'You have voted';
+                            } else {
+                                const voteButton = document.createElement('button');
+                                voteButton.innerText = 'Vote';
+                                voteButton.onclick = () => castVote(player);
+                                voteCell.appendChild(voteButton);
+                            }
+
+                            row.appendChild(voteCell);
+                            fragment.appendChild(row);
+                        });
+
+                        // Replace the table body content in one operation
+                        votingTableBody.innerHTML = '';
+                        votingTableBody.appendChild(fragment);
+
+                        // Disable the Skip button if the player has voted or is dead
+                        if (hasVoted || playerStatuses[playerName] !== 'alive') {
+                            document.getElementById('skip-button').disabled = true;
+                        } else {
+                            document.getElementById('skip-button').disabled = false;
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching player list for voting:', error);
+                    });
+            }
+
+            // Function to handle casting a vote
+            function castVote(votedPlayer) {
+                fetch(`/submit_vote/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName,
+                        voted_player: votedPlayer
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'Vote submitted') {
+                        hasVoted = true;
+                        alert(`You voted for ${votedPlayer}`);
+                        populateVotingTable();
+                        // Disable the Skip button
+                        document.getElementById('skip-button').disabled = true;
+                    } else {
+                        alert('Unable to submit vote: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting vote:', error);
+                    alert('An error occurred while submitting your vote.');
+                });
+            }
+
+            function skipVote() {
+                fetch(`/skip_vote/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'Vote submitted') {
+                        hasVoted = true;
+                        alert(`You have chosen to skip voting.`);
+                        populateVotingTable();
+                        // Disable the Skip button
+                        document.getElementById('skip-button').disabled = true;
+                    } else {
+                        alert('Unable to submit skip: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting skip:', error);
+                    alert('An error occurred while submitting your skip.');
+                });
+            }
+
+            function updateActivityLog() {
+                fetch(`/activity_log/${lobbyCode}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const activityLogList = document.getElementById('activity-log');
+                        activityLogList.innerHTML = ''; // Clear existing entries
+
+                        data.activity_log.forEach(entry => {
+                            const listItem = document.createElement('li');
+                            listItem.innerText = `[${entry.time}] ${entry.message}`;
+                            activityLogList.appendChild(listItem);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching activity log:', error);
+                    });
+            }
+
+            function displayGameOver(message) {
+                if (!message) {
+                    // Fallback message if none provided
+                    message = 'Game over!';
+                }
+
+                // Stop timers
+                clearInterval(timerInterval);
+                clearInterval(meetingTimerInterval);
+                clearInterval(pollingInterval);
+
+                // Display the message, options, and buttons on the game screen
+                const gameScreen = document.getElementById('game-screen');
+                gameScreen.innerHTML = `
+                    <h1>${message}</h1>
+                    <h2>Please rate the game difficulty:</h2>
+                    <div id="feedback-options">
+                        <label>
+                            <input type="radio" name="difficulty" value="Too easy"> Too easy
+                        </label><br>
+                        <label>
+                            <input type="radio" name="difficulty" value="Just right"> Just right
+                        </label><br>
+                        <label>
+                            <input type="radio" name="difficulty" value="Too difficult"> Too difficult
+                        </label>
+                    </div>
+                    <button id="return-to-lobby-button" disabled>Return to Lobby</button>
+                    <button id="return-to-home-button" disabled>Return to Home Screen</button>
+                `;
+
+                // Attach event listeners to the buttons
+                document.getElementById('return-to-lobby-button').onclick = returnToLobby;
+                document.getElementById('return-to-home-button').onclick = returnToHome;
+
+                // Attach event listener to the feedback options
+                const feedbackOptions = document.getElementsByName('difficulty');
+                for (let option of feedbackOptions) {
+                    option.onchange = handleFeedbackSelection;
+                }
+            }
+
+            function handleFeedbackSelection() {
+                const selectedOption = document.querySelector('input[name="difficulty"]:checked');
+                if (selectedOption) {
+                    gameFeedback = selectedOption.value;
+                    // Enable the buttons
+                    document.getElementById('return-to-lobby-button').disabled = false;
+                    document.getElementById('return-to-home-button').disabled = false;
+                }
+            }
+
+            function gameTimeExpired() {
+                fetch(`/game_time_expired/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message === 'Game time expired, impostor wins') {
+                        // Handle game over state
+                        displayGameOver('impostor');
+                    } else {
+                        console.error('Error processing game time expiration:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error processing game time expiration:', error);
+                });
+            }
+
+            function returnToLobby() {
+                console.log(`returnToLobby called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
+
+                fetch(`/reset_lobby/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Data received from reset_lobby:', data);
+
+                    // Proceed without strict message check
+                    // Hide the game screen
+                    document.getElementById('game-screen').classList.add('hidden');
+                    // Show the lobby screen
+                    document.getElementById('lobby-screen').classList.remove('hidden');
+
+                    // Reset necessary variables
+                    resetGameVariables();
+
+                    // Start polling again to update the lobby status
+                    startPolling();
+                })
+                .catch(error => {
+                    console.error('Error resetting lobby:', error);
+                    alert('Error resetting lobby: ' + (error.message || 'An unknown error occurred.'));
+                });
+            }
+
+            function returnToHome() {
+                console.log(`returnToHome called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
+
+                fetch(`/leave_lobby/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => { throw err; });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Data received from leave_lobby:', data);
+
+                    // Hide all screens
+                    document.getElementById('game-screen').classList.add('hidden');
+                    document.getElementById('lobby-screen').classList.add('hidden');
+                    document.getElementById('create-join-section').classList.add('hidden');
+
+                    // Show the initial screen
+                    document.getElementById('initial-screen').classList.remove('hidden');
+
+                    // Reset all variables
+                    resetAllVariables();
+                })
+                .catch(error => {
+                    console.error('Error leaving lobby:', error);
+                    alert('Error leaving lobby: ' + (error.message || 'An unknown error occurred.'));
+                });
+            }
+
+            function resetGameVariables() {
+                roleRevealed = false;
+                playerRole = '';
+                roomRevealed = false;
+                playerRoom = '';
+                gameStartTime = null;
+                gameDurationMs = 0;
+                isMeetingActive = false;
+                hasVoted = false;
+
+                // Clear intervals if not already cleared
+                clearInterval(timerInterval);
+                clearInterval(meetingTimerInterval);
+                clearInterval(roomInterval);
+
+                // Reset game screen content first
+                document.getElementById('game-screen').innerHTML = `
+                    <h1>Game Screen</h1>
+                    <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
+                    <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
+                    <div id="meeting-timer-section" class="hidden">
+                        <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
+                    </div>
+                    <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
+                    <p id="role-display" class="hidden"></p>
+                    <h2>Room Assignment:</h2>
+                    <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
+                    <p id="room-display" class="hidden"></p>
+                    <div id="voting-section" class="hidden">
+                        <h2>Vote for a Player</h2>
+                        <button id="skip-button" onclick="skipVote()">Skip</button>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Players</th>
+                                    <th>Status</th>
+                                    <th>Vote</th>
+                                </tr>
+                            </thead>
+                            <tbody id="voting-table-body">
+                                <!-- Voting options will be generated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="activity-log-section">
+                        <h2>Activity Log</h2>
+                        <ul id="activity-log">
+                            <!-- Activity log entries will be dynamically added here -->
+                        </ul>
+                    </div>
+                `;
+
+                // Now, reset the activity log
+                document.getElementById('activity-log').innerHTML = '';
+
+                // Reset the Ready button if it exists
+                const readyButton = document.getElementById("ready-button");
+                if (readyButton) {
+                    readyButton.disabled = false;
+                }
+            }
+
+            function resetAllVariables() {
+                // Call resetGameVariables to reset game-specific variables
+                resetGameVariables();
+
+                // Reset lobby variables
+                maxPlayers = 0;
+                currentAction = '';
+                lobbyCode = '';
+                playerName = '';
+                roomNames = [];
+                gameDuration = 0;
+
+                // Clear intervals if not already cleared
+                clearInterval(pollingInterval);
+
+                // Clear name input
+                document.getElementById("player-name").value = '';
+
+                // Reset the lobby screen
+                document.getElementById("lobby-code").innerText = '';
+                document.getElementById("player-list").innerHTML = '';
+
+                // Reset the Ready button
+                document.getElementById("ready-button").disabled = false;
+            }
+
+            function selectDeadPlayerAndRoom() {
+                // Fetch the list of alive players (excluding the current player)
+                fetch(`/lobby/${lobbyCode}`)
                 .then(response => response.json())
                 .then(data => {
                     const playerNames = data.player_names;
-                    const hasVotedData = data.has_voted || {};
-                    const playerStatuses = data.player_statuses || {};
-                    const votingTableBody = document.getElementById('voting-table-body');
+                    const playerStatuses = data.player_statuses;
 
-                    // Create a DocumentFragment to build the new table content
-                    const fragment = document.createDocumentFragment();
+                    // Get alive players excluding the reporter
+                    const alivePlayers = playerNames.filter(name => playerStatuses[name] === 'alive' && name !== playerName);
 
-                    playerNames.forEach(player => {
-                        const row = document.createElement('tr');
+                    if (alivePlayers.length === 0) {
+                        alert('No other alive players to report.');
+                        // Start meeting without body found
+                        startMeetingWithoutBody();
+                        return;
+                    }
 
-                        // Player name cell
-                        const playerCell = document.createElement('td');
-                        playerCell.innerText = player;
-                        row.appendChild(playerCell);
+                    // Populate the select element
+                    const deadPlayerSelect = document.getElementById('dead-player-select');
+                    deadPlayerSelect.innerHTML = ''; // Clear previous options
 
-                        // Status cell
-                        const statusCell = document.createElement('td');
-                        statusCell.innerText = playerStatuses[player] || 'unknown';
-                        row.appendChild(statusCell);
-
-                        // Vote button or status cell
-                        const voteCell = document.createElement('td');
-
-                        if (playerStatuses[playerName] !== 'alive') {
-                            voteCell.innerText = 'You are dead';
-                        } else if (playerStatuses[player] !== 'alive') {
-                            voteCell.innerText = `${player} is dead`;
-                        } else if (player === playerName) {
-                            voteCell.innerText = 'You cannot vote for yourself';
-                        } else if (hasVoted) {
-                            voteCell.innerText = 'Vote submitted';
-                        } else if (hasVotedData[playerName]) {
-                            voteCell.innerText = 'You have voted';
-                        } else {
-                            const voteButton = document.createElement('button');
-                            voteButton.innerText = 'Vote';
-                            voteButton.onclick = () => castVote(player);
-                            voteCell.appendChild(voteButton);
-                        }
-
-                        row.appendChild(voteCell);
-                        fragment.appendChild(row);
+                    alivePlayers.forEach(player => {
+                        const option = document.createElement('option');
+                        option.value = player;
+                        option.text = player;
+                        deadPlayerSelect.appendChild(option);
                     });
 
-                    // Replace the table body content in one operation
-                    votingTableBody.innerHTML = '';
-                    votingTableBody.appendChild(fragment);
+                    // Display the modal
+                    document.getElementById('select-dead-player-modal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching player list:', error);
+                    alert('An error occurred while fetching the player list.');
+                });
+            }
 
-                    // Disable the Skip button if the player has voted or is dead
-                    if (hasVoted || playerStatuses[playerName] !== 'alive') {
-                        document.getElementById('skip-button').disabled = true;
-                    } else {
-                        document.getElementById('skip-button').disabled = false;
+            // Event listeners for the dead player modal
+            document.getElementById('dead-player-next-button').addEventListener('click', () => {
+                const deadPlayer = document.getElementById('dead-player-select').value;
+                if (deadPlayer) {
+                    // Close the modal
+                    document.getElementById('select-dead-player-modal').classList.add('hidden');
+                    // Proceed to select the room
+                    selectRoom(deadPlayer);
+                } else {
+                    alert('Please select a player.');
+                }
+            });
+
+            document.getElementById('dead-player-cancel-button').addEventListener('click', () => {
+                // Close the modal
+                document.getElementById('select-dead-player-modal').classList.add('hidden');
+                // Start meeting without body found
+                startMeetingWithoutBody();
+            });
+
+            function selectRoom(deadPlayer) {
+                // Fetch the list of rooms
+                fetch(`/get_rooms/${lobbyCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    const rooms = data.rooms;
+
+                    if (rooms.length === 0) {
+                        alert('No rooms available.');
+                        // Start meeting without body found
+                        startMeetingWithoutBody();
+                        return;
+                    }
+
+                    // Populate the room select element
+                    const roomSelect = document.getElementById('room-select');
+                    roomSelect.innerHTML = ''; // Clear previous options
+
+                    rooms.forEach(room => {
+                        const option = document.createElement('option');
+                        option.value = room;
+                        option.text = room;
+                        roomSelect.appendChild(option);
+                    });
+
+                    // Store the selected dead player for later use
+                    window.selectedDeadPlayer = deadPlayer;
+
+                    // Display the modal
+                    document.getElementById('select-room-modal').classList.remove('hidden');
+                })
+                .catch(error => {
+                    console.error('Error fetching rooms:', error);
+                    alert('An error occurred while fetching the rooms.');
+                });
+            }
+
+            // Event listeners for the room selection modal
+            document.getElementById('room-select-submit-button').addEventListener('click', () => {
+                const roomFound = document.getElementById('room-select').value;
+                if (roomFound) {
+                    // Close the modal
+                    document.getElementById('select-room-modal').classList.add('hidden');
+                    // Report the body
+                    reportBody(window.selectedDeadPlayer, roomFound);
+                } else {
+                    alert('Please select a room.');
+                }
+            });
+
+            document.getElementById('room-select-cancel-button').addEventListener('click', () => {
+                // Close the modal
+                document.getElementById('select-room-modal').classList.add('hidden');
+                // Start meeting without body found
+                startMeetingWithoutBody();
+            });
+
+            function reportBody(deadPlayer, roomFound) {
+                // Send the information to the backend
+                fetch(`/call_meeting/${lobbyCode}`, {
+                    method: "POST",
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        player_name: playerName,
+                        body_found: true,
+                        dead_player: deadPlayer,
+                        room_found: roomFound
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.message !== 'Meeting started') {
+                        alert('Unable to start meeting: ' + data.error);
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching player list for voting:', error);
+                    console.error('Error reporting body:', error);
+                    alert('An error occurred while reporting the body.');
                 });
-        }
-
-        // Function to handle casting a vote
-        function castVote(votedPlayer) {
-            fetch(`/submit_vote/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName,
-                    voted_player: votedPlayer
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'Vote submitted') {
-                    hasVoted = true;
-                    alert(`You voted for ${votedPlayer}`);
-                    populateVotingTable();
-                    // Disable the Skip button
-                    document.getElementById('skip-button').disabled = true;
-                } else {
-                    alert('Unable to submit vote: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error submitting vote:', error);
-                alert('An error occurred while submitting your vote.');
-            });
-        }
-
-        function skipVote() {
-            fetch(`/skip_vote/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'Vote submitted') {
-                    hasVoted = true;
-                    alert(`You have chosen to skip voting.`);
-                    populateVotingTable();
-                    // Disable the Skip button
-                    document.getElementById('skip-button').disabled = true;
-                } else {
-                    alert('Unable to submit skip: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error submitting skip:', error);
-                alert('An error occurred while submitting your skip.');
-            });
-        }
-
-        function updateActivityLog() {
-            fetch(`/activity_log/${lobbyCode}`)
-                .then(response => response.json())
-                .then(data => {
-                    const activityLogList = document.getElementById('activity-log');
-                    activityLogList.innerHTML = ''; // Clear existing entries
-
-                    data.activity_log.forEach(entry => {
-                        const listItem = document.createElement('li');
-                        listItem.innerText = `[${entry.time}] ${entry.message}`;
-                        activityLogList.appendChild(listItem);
-                    });
-                })
-                .catch(error => {
-                    console.error('Error fetching activity log:', error);
-                });
-        }
-
-        function displayGameOver(message) {
-            if (!message) {
-                // Fallback message if none provided
-                message = 'Game over!';
-            }
-
-            // Stop timers
-            clearInterval(timerInterval);
-            clearInterval(meetingTimerInterval);
-            clearInterval(pollingInterval);
-
-            // Display the message, options, and buttons on the game screen
-            const gameScreen = document.getElementById('game-screen');
-            gameScreen.innerHTML = `
-                <h1>${message}</h1>
-                <h2>Please rate the game difficulty:</h2>
-                <div id="feedback-options">
-                    <label>
-                        <input type="radio" name="difficulty" value="Too easy"> Too easy
-                    </label><br>
-                    <label>
-                        <input type="radio" name="difficulty" value="Just right"> Just right
-                    </label><br>
-                    <label>
-                        <input type="radio" name="difficulty" value="Too difficult"> Too difficult
-                    </label>
-                </div>
-                <button id="return-to-lobby-button" disabled>Return to Lobby</button>
-                <button id="return-to-home-button" disabled>Return to Home Screen</button>
-            `;
-
-            // Attach event listeners to the buttons
-            document.getElementById('return-to-lobby-button').onclick = returnToLobby;
-            document.getElementById('return-to-home-button').onclick = returnToHome;
-
-            // Attach event listener to the feedback options
-            const feedbackOptions = document.getElementsByName('difficulty');
-            for (let option of feedbackOptions) {
-                option.onchange = handleFeedbackSelection;
-            }
-        }
-
-        function handleFeedbackSelection() {
-            const selectedOption = document.querySelector('input[name="difficulty"]:checked');
-            if (selectedOption) {
-                gameFeedback = selectedOption.value;
-                // Enable the buttons
-                document.getElementById('return-to-lobby-button').disabled = false;
-                document.getElementById('return-to-home-button').disabled = false;
-            }
-        }
-
-        function gameTimeExpired() {
-            fetch(`/game_time_expired/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message === 'Game time expired, impostor wins') {
-                    // Handle game over state
-                    displayGameOver('impostor');
-                } else {
-                    console.error('Error processing game time expiration:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error processing game time expiration:', error);
-            });
-        }
-
-        function returnToLobby() {
-            console.log(`returnToLobby called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
-
-            fetch(`/reset_lobby/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Data received from reset_lobby:', data);
-
-                // Proceed without strict message check
-                // Hide the game screen
-                document.getElementById('game-screen').classList.add('hidden');
-                // Show the lobby screen
-                document.getElementById('lobby-screen').classList.remove('hidden');
-
-                // Reset necessary variables
-                resetGameVariables();
-
-                // Start polling again to update the lobby status
-                startPolling();
-            })
-            .catch(error => {
-                console.error('Error resetting lobby:', error);
-                alert('Error resetting lobby: ' + (error.message || 'An unknown error occurred.'));
-            });
-        }
-
-        function returnToHome() {
-            console.log(`returnToHome called with playerName: ${playerName}, lobbyCode: ${lobbyCode}`);
-
-            fetch(`/leave_lobby/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName
-                })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => { throw err; });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('Data received from leave_lobby:', data);
-
-                // Hide all screens
-                document.getElementById('game-screen').classList.add('hidden');
-                document.getElementById('lobby-screen').classList.add('hidden');
-                document.getElementById('create-join-section').classList.add('hidden');
-
-                // Show the initial screen
-                document.getElementById('initial-screen').classList.remove('hidden');
-
-                // Reset all variables
-                resetAllVariables();
-            })
-            .catch(error => {
-                console.error('Error leaving lobby:', error);
-                alert('Error leaving lobby: ' + (error.message || 'An unknown error occurred.'));
-            });
-        }
-
-        function resetGameVariables() {
-            roleRevealed = false;
-            playerRole = '';
-            roomRevealed = false;
-            playerRoom = '';
-            gameStartTime = null;
-            gameDurationMs = 0;
-            isMeetingActive = false;
-            hasVoted = false;
-
-            // Clear intervals if not already cleared
-            clearInterval(timerInterval);
-            clearInterval(meetingTimerInterval);
-            clearInterval(roomInterval);
-
-            // Reset game screen content first
-            document.getElementById('game-screen').innerHTML = `
-                <h1>Game Screen</h1>
-                <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
-                <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
-                <div id="meeting-timer-section" class="hidden">
-                    <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
-                </div>
-                <button id="toggle-role-button" onclick="toggleRole()">Reveal Role</button>
-                <p id="role-display" class="hidden"></p>
-                <h2>Room Assignment:</h2>
-                <button id="toggle-room-button" onclick="toggleRoom()">Reveal Room</button>
-                <p id="room-display" class="hidden"></p>
-                <div id="voting-section" class="hidden">
-                    <h2>Vote for a Player</h2>
-                    <button id="skip-button" onclick="skipVote()">Skip</button>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Players</th>
-                                <th>Status</th>
-                                <th>Vote</th>
-                            </tr>
-                        </thead>
-                        <tbody id="voting-table-body">
-                            <!-- Voting options will be generated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-                <div id="activity-log-section">
-                    <h2>Activity Log</h2>
-                    <ul id="activity-log">
-                        <!-- Activity log entries will be dynamically added here -->
-                    </ul>
-                </div>
-            `;
-
-            // Now, reset the activity log
-            document.getElementById('activity-log').innerHTML = '';
-
-            // Reset the Ready button if it exists
-            const readyButton = document.getElementById("ready-button");
-            if (readyButton) {
-                readyButton.disabled = false;
-            }
-        }
-
-        function resetAllVariables() {
-            // Call resetGameVariables to reset game-specific variables
-            resetGameVariables();
-
-            // Reset lobby variables
-            maxPlayers = 0;
-            currentAction = '';
-            lobbyCode = '';
-            playerName = '';
-            roomNames = [];
-            gameDuration = 0;
-
-            // Clear intervals if not already cleared
-            clearInterval(pollingInterval);
-
-            // Clear name input
-            document.getElementById("player-name").value = '';
-
-            // Reset the lobby screen
-            document.getElementById("lobby-code").innerText = '';
-            document.getElementById("player-list").innerHTML = '';
-
-            // Reset the Ready button
-            document.getElementById("ready-button").disabled = false;
-        }
-
-        function selectDeadPlayerAndRoom() {
-            // Fetch the list of alive players (excluding the current player)
-            fetch(`/lobby/${lobbyCode}`)
-            .then(response => response.json())
-            .then(data => {
-                const playerNames = data.player_names;
-                const playerStatuses = data.player_statuses;
-
-                // Get alive players excluding the reporter
-                const alivePlayers = playerNames.filter(name => playerStatuses[name] === 'alive' && name !== playerName);
-
-                if (alivePlayers.length === 0) {
-                    alert('No other alive players to report.');
-                    // Start meeting without body found
-                    startMeetingWithoutBody();
-                    return;
-                }
-
-                // Populate the select element
-                const deadPlayerSelect = document.getElementById('dead-player-select');
-                deadPlayerSelect.innerHTML = ''; // Clear previous options
-
-                alivePlayers.forEach(player => {
-                    const option = document.createElement('option');
-                    option.value = player;
-                    option.text = player;
-                    deadPlayerSelect.appendChild(option);
-                });
-
-                // Display the modal
-                document.getElementById('select-dead-player-modal').classList.remove('hidden');
-            })
-            .catch(error => {
-                console.error('Error fetching player list:', error);
-                alert('An error occurred while fetching the player list.');
-            });
-        }
-
-        // Event listeners for the dead player modal
-        document.getElementById('dead-player-next-button').addEventListener('click', () => {
-            const deadPlayer = document.getElementById('dead-player-select').value;
-            if (deadPlayer) {
-                // Close the modal
-                document.getElementById('select-dead-player-modal').classList.add('hidden');
-                // Proceed to select the room
-                selectRoom(deadPlayer);
-            } else {
-                alert('Please select a player.');
-            }
-        });
-
-        document.getElementById('dead-player-cancel-button').addEventListener('click', () => {
-            // Close the modal
-            document.getElementById('select-dead-player-modal').classList.add('hidden');
-            // Start meeting without body found
-            startMeetingWithoutBody();
-        });
-
-        function selectRoom(deadPlayer) {
-            // Fetch the list of rooms
-            fetch(`/get_rooms/${lobbyCode}`)
-            .then(response => response.json())
-            .then(data => {
-                const rooms = data.rooms;
-
-                if (rooms.length === 0) {
-                    alert('No rooms available.');
-                    // Start meeting without body found
-                    startMeetingWithoutBody();
-                    return;
-                }
-
-                // Populate the room select element
-                const roomSelect = document.getElementById('room-select');
-                roomSelect.innerHTML = ''; // Clear previous options
-
-                rooms.forEach(room => {
-                    const option = document.createElement('option');
-                    option.value = room;
-                    option.text = room;
-                    roomSelect.appendChild(option);
-                });
-
-                // Store the selected dead player for later use
-                window.selectedDeadPlayer = deadPlayer;
-
-                // Display the modal
-                document.getElementById('select-room-modal').classList.remove('hidden');
-            })
-            .catch(error => {
-                console.error('Error fetching rooms:', error);
-                alert('An error occurred while fetching the rooms.');
-            });
-        }
-
-        // Event listeners for the room selection modal
-        document.getElementById('room-select-submit-button').addEventListener('click', () => {
-            const roomFound = document.getElementById('room-select').value;
-            if (roomFound) {
-                // Close the modal
-                document.getElementById('select-room-modal').classList.add('hidden');
-                // Report the body
-                reportBody(window.selectedDeadPlayer, roomFound);
-            } else {
-                alert('Please select a room.');
-            }
-        });
-
-        document.getElementById('room-select-cancel-button').addEventListener('click', () => {
-            // Close the modal
-            document.getElementById('select-room-modal').classList.add('hidden');
-            // Start meeting without body found
-            startMeetingWithoutBody();
-        });
-
-        function reportBody(deadPlayer, roomFound) {
-            // Send the information to the backend
-            fetch(`/call_meeting/${lobbyCode}`, {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    player_name: playerName,
-                    body_found: true,
-                    dead_player: deadPlayer,
-                    room_found: roomFound
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.message !== 'Meeting started') {
-                    alert('Unable to start meeting: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error reporting body:', error);
-                alert('An error occurred while reporting the body.');
-            });
-        }      
-    </script>
-<footer>
-    <img id="footer-image" src="{{ url_for('static', filename='images/footer_image.v1.jpg') }}" alt="Footer Image">
-</footer>
+            }      
+        </script>
+    </div>
+    <footer>
+        <img id="footer-image" src="{{ url_for('static', filename='images/footer_image.v1.jpg') }}" alt="Footer Image">
+    </footer>
 </body>
 </html>
