@@ -259,9 +259,14 @@
             max-width: 600px;
         }
 
-        /* Hide footer when the initial screen is visible */
-        #initial-screen ~ footer {
+        /* Hide footer when #initial-screen is visible */
+        #initial-screen:not(.hidden) ~ footer {
             display: none;
+        }
+
+        /* Show footer when #initial-screen is hidden */
+        #initial-screen.hidden ~ footer {
+            display: block;
         }
 
         /* Ensure footer is visible when other sections are active */
