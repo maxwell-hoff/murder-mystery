@@ -259,16 +259,6 @@
             max-width: 600px;
         }
 
-        /* Hide footer when #initial-screen is visible */
-        /* #initial-screen:not(.hidden) ~ footer {
-            display: none;
-        } */
-
-        /* Show footer when #initial-screen is hidden */
-        /* #initial-screen.hidden ~ footer {
-            display: block;
-        } */
-
         /* Ensure footer is visible when other sections are active */
         #create-join-section ~ footer,
         #name-popup ~ footer,
@@ -289,6 +279,15 @@
         /* Show footer when not on the initial screen */
         body.show-footer footer {
             display: block;
+        }
+
+        /* Timer styles */
+        .timer {
+            color: white; /* Default color */
+        }
+
+        .timer.running {
+            color: green;
         }
     </style>
 </head>
@@ -381,16 +380,16 @@
         <!-- Game screen -->
         <div id="game-screen" class="hidden">
             <h1>Game Screen</h1>
-            <!-- Display the Game Timer -->
-            <h2>Time Remaining: <span id="timer-display">00:00:00</span></h2>
+            <!-- Game Timer -->
+             <h2>Time Remaining: <span id="timer-display" class="timer">00:00:00</span></h2>
 
             <!-- Call Meeting/Mark Dead Button -->
             <button id="call-meeting-button" onclick="callMeeting()">Call Meeting</button>
             <button id="mark-dead-button" onclick="markYourselfDead()">Mark Yourself Dead</button>
 
-            <!-- Meeting Timer (initially hidden) -->
+            <!-- Meeting Timer -->
             <div id="meeting-timer-section" class="hidden">
-                <h2>Meeting Time Remaining: <span id="meeting-timer-display">05:00:00</span></h2>
+                <h2>Meeting Time Remaining: <span id="meeting-timer-display" class="timer">05:00:00</span></h2>
             </div>
 
             <!-- Reveal/Hide Role Button -->
@@ -1072,6 +1071,9 @@
 
             function startGameTimer() {
                 gameStartTime = parseInt(gameStartTime);
+                
+                // Add 'running' class to the game timer display
+                document.getElementById('timer-display').classList.add('running');
 
                 // Calculate the game duration in milliseconds
                 gameDurationMs = gameDuration * 60 * 1000;
@@ -1098,6 +1100,8 @@
             // Function to pause the game timer
             function pauseGameTimer() {
                 clearInterval(timerInterval);
+                // Remove 'running' class from the game timer display
+                document.getElementById('timer-display').classList.remove('running');
             }
 
             // Function to resume the game timer
@@ -1113,11 +1117,17 @@
                 timerInterval = setInterval(() => {
                     updateTimerDisplay();
                 }, 10);
+
+                // Add 'running' class to the game timer display
+                document.getElementById('timer-display').classList.add('running');
             }
 
             // Function to start the meeting timer
             function startMeetingTimer() {
                 meetingStartTime = parseInt(meetingStartTime);
+
+                // Add 'running' class to the meeting timer display
+                document.getElementById('meeting-timer-display').classList.add('running');
 
                 // Calculate the offset between client and server time
                 const clientTimeNow = Date.now();
@@ -1195,6 +1205,8 @@
                 .catch(error => {
                     console.error('Error processing expired meeting:', error);
                 });
+                // Remove 'running' class from the meeting timer display
+                document.getElementById('meeting-timer-display').classList.remove('running');
             }
 
             // Function to handle "Call Meeting" button click
