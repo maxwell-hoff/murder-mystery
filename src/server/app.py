@@ -6,8 +6,10 @@ import redis
 import json
 import game_logic
 import time
+import simulation
 
 app = Flask(__name__, static_folder='../client/static', template_folder='../client', static_url_path='/static')
+USE_SIMULATION_FOR_ROOM_ASSIGNMENT = False  # Set to False to use existing method
 
 # Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
@@ -124,8 +126,15 @@ def set_ready_status(lobby_code):
             lobby_data['roles'] = roles  # Store roles in lobby data
             # Assign rooms using game_logic
             rooms = lobby_data['rooms']
-            room_assignments = game_logic.assign_rooms(lobby_data['player_names'], rooms)
-            lobby_data['room_assignments'] = room_assignments  # Store room assignments
+            if USE_SIMULATION_FOR_ROOM_ASSIGNMENT:
+                # Use simulation to assign rooms
+                print("Assigning rooms using simulation...")
+                # Similar to recalculate_room_assignments but during game start
+                recalculate_room_assignments(lobby_data)
+            else:
+                # Use existing method
+                room_assignments = game_logic.assign_rooms(lobby_data['player_names'], rooms)
+                lobby_data['room_assignments'] = room_assignments  # Store room assignments
             # Record the game start time
             lobby_data['game_start_time'] = int(round(time.time() * 1000))
             # Initialize last room assignment time
@@ -612,6 +621,10 @@ def mark_yourself_dead(lobby_code):
         # Update the last kill time
         lobby_data['last_kill_time'] = current_time
 
+        # Update room assignments if using simulation
+        if USE_SIMULATION_FOR_ROOM_ASSIGNMENT:
+            recalculate_room_assignments(lobby_data)
+
         # Update lobby data in Redis
         r.set(lobby_key, json.dumps(lobby_data))
 
@@ -630,6 +643,9 @@ def mark_yourself_dead(lobby_code):
         return jsonify({'error': 'Lobby not found'}), 404
 
 def process_votes(lobby_data):
+    # Initialize a flag to check if a player was eliminated
+    player_eliminated = False
+
     votes = lobby_data['votes']
     player_statuses = lobby_data['player_statuses']
     # game_start_time = lobby_data.get('game_start_time')
@@ -670,6 +686,7 @@ def process_votes(lobby_data):
                 player_statuses[eliminated_player] = 'dead'
                 message = f"Player {eliminated_player} has been eliminated."
                 print(message)
+                player_eliminated = True  # Set the flag
             else:
                 message = "No majority. No one is eliminated."
                 print(message)
@@ -677,62 +694,68 @@ def process_votes(lobby_data):
     # Append the message and time to the activity log
     append_activity_log(lobby_data, message)
 
+    # If a player was eliminated and using simulation, recalculate room assignments
+    if player_eliminated and USE_SIMULATION_FOR_ROOM_ASSIGNMENT:
+        recalculate_room_assignments(lobby_data)
+
     # Check for win conditions after processing votes
     check_win_conditions(lobby_data)
 
 def update_room_assignments_if_needed(lobby_data):
-    current_time = int(round(time.time() * 1000))
-    last_check_time = lobby_data.get('last_check_time', 0)
-    reassignment_check_interval = 10 * 1000  # 10 seconds in milliseconds
+    # Only proceed if not using simulation for room assignments
+    if not USE_SIMULATION_FOR_ROOM_ASSIGNMENT:
+        current_time = int(round(time.time() * 1000))
+        last_check_time = lobby_data.get('last_check_time', 0)
+        reassignment_check_interval = 10 * 1000  # 10 seconds in milliseconds
 
-    # Check if enough time has passed since the last check
-    if current_time - last_check_time >= reassignment_check_interval:
-        # Update the last check time
-        lobby_data['last_check_time'] = current_time
+        # Check if enough time has passed since the last check
+        if current_time - last_check_time >= reassignment_check_interval:
+            # Update the last check time
+            lobby_data['last_check_time'] = current_time
 
-        # Do not reassign if a meeting is active
-        if lobby_data.get('meeting_active', False):
-            return False  # No reassignment during meetings
+            # Do not reassign if a meeting is active
+            if lobby_data.get('meeting_active', False):
+                return False  # No reassignment during meetings
 
-        # Ensure only one player is reassigned every 30 seconds
-        last_reassignment_time = lobby_data.get('last_reassignment_time', 0)
-        if current_time - last_reassignment_time < 30 * 1000:
-            return False  # Do not reassign yet
+            # Ensure only one player is reassigned every 30 seconds
+            last_reassignment_time = lobby_data.get('last_reassignment_time', 0)
+            if current_time - last_reassignment_time < 30 * 1000:
+                return False  # Do not reassign yet
 
-        # Get a list of players who can be reassigned
-        eligible_players = []
-        for player in lobby_data['player_names']:
-            if lobby_data['player_statuses'].get(player) != 'alive':
-                continue  # Skip dead players
-            if lobby_data['reassignments'].get(player, 0) >= 3:
-                continue  # Skip if already reassigned 3 times
-            eligible_players.append(player)
+            # Get a list of players who can be reassigned
+            eligible_players = []
+            for player in lobby_data['player_names']:
+                if lobby_data['player_statuses'].get(player) != 'alive':
+                    continue  # Skip dead players
+                if lobby_data['reassignments'].get(player, 0) >= 3:
+                    continue  # Skip if already reassigned 3 times
+                eligible_players.append(player)
 
-        if not eligible_players:
-            return False  # No eligible players to reassign
+            if not eligible_players:
+                return False  # No eligible players to reassign
 
-        # Randomly select one player to reassign
-        player_to_reassign = random.choice(eligible_players)
+            # Randomly select one player to reassign
+            player_to_reassign = random.choice(eligible_players)
 
-        # Assign a new room
-        new_room = random.choice(lobby_data['rooms'])
-        if 'next_room_assignments' not in lobby_data:
-            lobby_data['next_room_assignments'] = {}
-        lobby_data['next_room_assignments'][player_to_reassign] = new_room
+            # Assign a new room
+            new_room = random.choice(lobby_data['rooms'])
+            if 'next_room_assignments' not in lobby_data:
+                lobby_data['next_room_assignments'] = {}
+            lobby_data['next_room_assignments'][player_to_reassign] = new_room
 
-        # Set the switch time for the player (e.g., 60 seconds from now)
-        switch_time = current_time + 60 * 1000  # 60 seconds in milliseconds
-        if 'next_room_switch_times' not in lobby_data:
-            lobby_data['next_room_switch_times'] = {}
-        lobby_data['next_room_switch_times'][player_to_reassign] = switch_time
+            # Set the switch time for the player (e.g., 60 seconds from now)
+            switch_time = current_time + 60 * 1000  # 60 seconds in milliseconds
+            if 'next_room_switch_times' not in lobby_data:
+                lobby_data['next_room_switch_times'] = {}
+            lobby_data['next_room_switch_times'][player_to_reassign] = switch_time
 
-        # Increment the player's reassignment count
-        lobby_data['reassignments'][player_to_reassign] += 1
+            # Increment the player's reassignment count
+            lobby_data['reassignments'][player_to_reassign] += 1
 
-        # Update the last reassignment time
-        lobby_data['last_reassignment_time'] = current_time
+            # Update the last reassignment time
+            lobby_data['last_reassignment_time'] = current_time
 
-        return True  # Indicate that a player was reassigned
+            return True  # Indicate that a player was reassigned
 
     return False  # No reassignment needed
 
@@ -792,6 +815,63 @@ def check_win_conditions(lobby_data):
     # No win condition met yet
     lobby_data['game_over'] = False
     lobby_data['game_over_message'] = None
+
+def recalculate_room_assignments(lobby_data):
+    print("Recalculating room assignments using simulation...")
+
+    # Get alive players
+    alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+
+    # Get the roles of alive players
+    roles = {player: role for player, role in lobby_data['roles'].items() if player in alive_players}
+
+    # Create Player objects
+    players = [simulation.Player(name=player, role=roles[player]) for player in alive_players]
+
+    # Simulation parameters (you can adjust these or make them dynamic)
+    num_rooms = len(lobby_data['rooms'])
+    simulation_time = lobby_data['duration'] * 60  # Convert minutes to seconds
+    assignment_interval = 10  # Room assignments change every 10 seconds
+    min_time_in_room_minutes = 2  # Players must stay in the same room for at least 2 minutes
+    min_time_in_room_seconds = min_time_in_room_minutes * 60
+
+    # Set other simulation parameters
+    min_time_per_kill = 30  # Kill opportunity must persist for at least 30 seconds
+    require_same_room = True
+    min_seconds_until_discovery = 240
+    max_seconds_until_discovery = 1000
+    difficulty_level = 'medium'  # Or adjust based on user settings
+    difficulty_ratio = simulation.get_difficulty_ratio(difficulty_level)
+
+    # Run the simulation
+    result = simulation.run_simulation(
+        num_players=len(players),
+        num_rooms=num_rooms,
+        simulation_time=simulation_time,
+        assignment_interval=assignment_interval,
+        min_time_in_room_minutes=min_time_in_room_minutes,
+        difficulty_ratio=difficulty_ratio,
+        min_time_per_kill=min_time_per_kill,
+        require_same_room=require_same_room,
+        min_seconds_until_discovery=min_seconds_until_discovery,
+        max_seconds_until_discovery=max_seconds_until_discovery,
+        num_initial_assignments=10,
+        max_attempts_per_assignment=10
+    )
+
+    if result is not None:
+        print("Simulation successful. Updating room assignments.")
+        # Use the first assignment from the simulation
+        assignments = result['assignments_per_interval'][0]
+        # Update room assignments in lobby_data
+        lobby_data['room_assignments'] = assignments
+        # Reset any next room assignments and switch times
+        lobby_data['next_room_assignments'] = {}
+        lobby_data['next_room_switch_times'] = {}
+        # Reset reassignments counts
+        lobby_data['reassignments'] = {player: 0 for player in alive_players}
+    else:
+        print("Simulation failed to find a suitable assignment. Keeping existing room assignments.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
