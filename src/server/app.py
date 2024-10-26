@@ -9,7 +9,7 @@ import time
 import simulation
 
 app = Flask(__name__, static_folder='../client/static', template_folder='../client', static_url_path='/static')
-USE_SIMULATION_FOR_ROOM_ASSIGNMENT = False  # Set to False to use existing method
+USE_SIMULATION_FOR_ROOM_ASSIGNMENT = True  # Set to False to use existing method
 
 # Set up Redis connection with SSL parameters
 redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')

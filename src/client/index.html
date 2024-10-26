@@ -497,6 +497,8 @@
             let countdownInterval; // Interval ID for the countdown
             let countdownTime = 60; // Countdown time in seconds
             let nextRoom = ''; // Store the next room assignment
+            let nextRoomInterval; // To hold the interval ID for next room assignment updates
+            const USE_SIMULATION_FOR_ROOM_ASSIGNMENT = true; // Set to true if using simulation
 
             function fetchPlayerRole() {
                 // Fetch the player's role from the backend
@@ -879,6 +881,7 @@
                                         resumeGameTimer();
                                         // Update the activity log
                                         updateActivityLog();
+                                        fetchPlayerRoom();
                                     }
                                 }
                             }
@@ -1016,6 +1019,16 @@
                         if (roomRevealed) {
                             startRoomCountdown();
                         }
+                    } else if (data.message === 'Room assignments managed by simulation') {
+                        // If room assignments are managed by simulation, we might not need to handle next room logic
+                        // Optionally, you can stop the interval that fetches next room assignments
+                        if (nextRoomInterval) {
+                            clearInterval(nextRoomInterval);
+                            nextRoomInterval = null;
+                        }
+                        // Hide the countdown and next room display
+                        document.getElementById('countdown-display').classList.add('hidden');
+                        document.getElementById('next-room-display').classList.add('hidden');
                     } else {
                         // No new room assigned
                         nextRoom = null;
@@ -1083,6 +1096,13 @@
                 serverTimeOffset = clientTimeNow - gameStartTime;
 
                 updateTimerDisplay();
+
+                // Start fetching next room assignments every 10 seconds if not using simulation
+                if (!USE_SIMULATION_FOR_ROOM_ASSIGNMENT) {
+                    nextRoomInterval = setInterval(() => {
+                        fetchNextRoomAssignment();
+                    }, 10000); // 10000 milliseconds = 10 seconds
+                }
 
                 timerInterval = setInterval(() => {
                     updateTimerDisplay();
@@ -1254,6 +1274,8 @@
                         // Update your status in the UI
                         // Optionally, disable the button
                         document.getElementById('mark-dead-button').disabled = true;
+                        // Fetch the updated room assignment
+                        fetchPlayerRoom();
                     } else if (data.error) {
                         alert(data.error);
                     }
