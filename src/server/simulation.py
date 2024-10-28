@@ -217,7 +217,7 @@ def simulate_game_with_constraints(
     return result
 
 def run_simulation(
-    num_players, num_rooms, simulation_time, assignment_interval, min_time_in_room_minutes, difficulty_ratio,
+    players, num_rooms, simulation_time, assignment_interval, min_time_in_room_minutes, difficulty_ratio,
     min_time_per_kill, require_same_room, min_seconds_until_discovery, max_seconds_until_discovery,
     num_initial_assignments=10, max_attempts_per_assignment=10
 ):
@@ -226,7 +226,7 @@ def run_simulation(
     min_time_in_room_intervals = min_time_in_room_seconds / assignment_interval
 
     # Calculate required kill opportunities
-    required_kill_opportunities = int(difficulty_ratio * (num_players - 2))
+    required_kill_opportunities = int(difficulty_ratio * (len(players) - 2))
     if required_kill_opportunities < 1:
         required_kill_opportunities = 1
 
@@ -234,9 +234,8 @@ def run_simulation(
     for initial_assignment_index in range(num_initial_assignments):
         # Try up to max_attempts_per_assignment for each initial assignment
         for attempt in range(max_attempts_per_assignment):
-            # Create players
-            players = [Player(name=f"Player_{i+1}") for i in range(num_players)]
-            players[0].role = 'impostor'  # First player is the impostor
+            for player in players:
+                player.status = 'alive'
 
             # Simulate the game
             result = simulate_game_with_constraints(

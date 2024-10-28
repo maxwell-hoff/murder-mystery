@@ -829,7 +829,7 @@ def recalculate_room_assignments(lobby_data):
         roles = {player: role for player, role in lobby_data['roles'].items() if player in alive_players}
 
         # Create Player objects
-        players = [simulation.Player(name=player, role=roles[player]) for player in alive_players]
+        players = [simulation.Player(name=player_name, role=roles[player_name]) for player_name in alive_players]
 
         # Simulation parameters (you can adjust these or make them dynamic)
         num_rooms = len(lobby_data['rooms'])
@@ -848,7 +848,7 @@ def recalculate_room_assignments(lobby_data):
 
         # Run the simulation
         result = simulation.run_simulation(
-            num_players=len(players),
+            players=players,
             num_rooms=num_rooms,
             simulation_time=simulation_time,
             assignment_interval=assignment_interval,
