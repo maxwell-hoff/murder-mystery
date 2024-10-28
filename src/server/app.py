@@ -124,12 +124,14 @@ def set_ready_status(lobby_code):
             # Assign roles using game_logic
             roles = game_logic.assign_roles(lobby_data['player_names'])
             lobby_data['roles'] = roles  # Store roles in lobby data
+            # Initialize player statuses **before** simulation
+            lobby_data['player_statuses'] = {player: 'alive' for player in lobby_data['player_names']}
             # Assign rooms using game_logic
             rooms = lobby_data['rooms']
             if USE_SIMULATION_FOR_ROOM_ASSIGNMENT:
                 # Use simulation to assign rooms
                 print("Assigning rooms using simulation...")
-                # Similar to recalculate_room_assignments but during game start
+                # Now that player_statuses is initialized, this should work
                 recalculate_room_assignments(lobby_data)
             else:
                 # Use existing method
@@ -817,61 +819,64 @@ def check_win_conditions(lobby_data):
     lobby_data['game_over_message'] = None
 
 def recalculate_room_assignments(lobby_data):
-    print("Recalculating room assignments using simulation...")
+    try:
+        print("Recalculating room assignments using simulation...")
 
-    # Get alive players
-    alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
+        # Get alive players
+        alive_players = [player for player, status in lobby_data['player_statuses'].items() if status == 'alive']
 
-    # Get the roles of alive players
-    roles = {player: role for player, role in lobby_data['roles'].items() if player in alive_players}
+        # Get the roles of alive players
+        roles = {player: role for player, role in lobby_data['roles'].items() if player in alive_players}
 
-    # Create Player objects
-    players = [simulation.Player(name=player, role=roles[player]) for player in alive_players]
+        # Create Player objects
+        players = [simulation.Player(name=player, role=roles[player]) for player in alive_players]
 
-    # Simulation parameters (you can adjust these or make them dynamic)
-    num_rooms = len(lobby_data['rooms'])
-    simulation_time = lobby_data['duration'] * 60  # Convert minutes to seconds
-    assignment_interval = 10  # Room assignments change every 10 seconds
-    min_time_in_room_minutes = 2  # Players must stay in the same room for at least 2 minutes
-    min_time_in_room_seconds = min_time_in_room_minutes * 60
+        # Simulation parameters (you can adjust these or make them dynamic)
+        num_rooms = len(lobby_data['rooms'])
+        simulation_time = lobby_data['duration'] * 60  # Convert minutes to seconds
+        assignment_interval = 10  # Room assignments change every 10 seconds
+        min_time_in_room_minutes = 2  # Players must stay in the same room for at least 2 minutes
+        min_time_in_room_seconds = min_time_in_room_minutes * 60
 
-    # Set other simulation parameters
-    min_time_per_kill = 30  # Kill opportunity must persist for at least 30 seconds
-    require_same_room = True
-    min_seconds_until_discovery = 240
-    max_seconds_until_discovery = 1000
-    difficulty_level = 'medium'  # Or adjust based on user settings
-    difficulty_ratio = simulation.get_difficulty_ratio(difficulty_level)
+        # Set other simulation parameters
+        min_time_per_kill = 30  # Kill opportunity must persist for at least 30 seconds
+        require_same_room = True
+        min_seconds_until_discovery = 240
+        max_seconds_until_discovery = 1000
+        difficulty_level = 'medium'  # Or adjust based on user settings
+        difficulty_ratio = simulation.get_difficulty_ratio(difficulty_level)
 
-    # Run the simulation
-    result = simulation.run_simulation(
-        num_players=len(players),
-        num_rooms=num_rooms,
-        simulation_time=simulation_time,
-        assignment_interval=assignment_interval,
-        min_time_in_room_minutes=min_time_in_room_minutes,
-        difficulty_ratio=difficulty_ratio,
-        min_time_per_kill=min_time_per_kill,
-        require_same_room=require_same_room,
-        min_seconds_until_discovery=min_seconds_until_discovery,
-        max_seconds_until_discovery=max_seconds_until_discovery,
-        num_initial_assignments=10,
-        max_attempts_per_assignment=10
-    )
+        # Run the simulation
+        result = simulation.run_simulation(
+            num_players=len(players),
+            num_rooms=num_rooms,
+            simulation_time=simulation_time,
+            assignment_interval=assignment_interval,
+            min_time_in_room_minutes=min_time_in_room_minutes,
+            difficulty_ratio=difficulty_ratio,
+            min_time_per_kill=min_time_per_kill,
+            require_same_room=require_same_room,
+            min_seconds_until_discovery=min_seconds_until_discovery,
+            max_seconds_until_discovery=max_seconds_until_discovery,
+            num_initial_assignments=10,
+            max_attempts_per_assignment=10
+        )
 
-    if result is not None:
-        print("Simulation successful. Updating room assignments.")
-        # Use the first assignment from the simulation
-        assignments = result['assignments_per_interval'][0]
-        # Update room assignments in lobby_data
-        lobby_data['room_assignments'] = assignments
-        # Reset any next room assignments and switch times
-        lobby_data['next_room_assignments'] = {}
-        lobby_data['next_room_switch_times'] = {}
-        # Reset reassignments counts
-        lobby_data['reassignments'] = {player: 0 for player in alive_players}
-    else:
-        print("Simulation failed to find a suitable assignment. Keeping existing room assignments.")
+        if result is not None:
+            print("Simulation successful. Updating room assignments.")
+            # Use the first assignment from the simulation
+            assignments = result['assignments_per_interval'][0]
+            # Update room assignments in lobby_data
+            lobby_data['room_assignments'] = assignments
+            # Reset any next room assignments and switch times
+            lobby_data['next_room_assignments'] = {}
+            lobby_data['next_room_switch_times'] = {}
+            # Reset reassignments counts
+            lobby_data['reassignments'] = {player: 0 for player in alive_players}
+        else:
+            print("Simulation failed to find a suitable assignment. Keeping existing room assignments.")
+    except Exception as e:
+        print(f"Error during simulation: {e}")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
