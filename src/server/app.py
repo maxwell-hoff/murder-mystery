@@ -248,7 +248,7 @@ def get_room(lobby_code):
             # Update lobby data in Redis
             r.set(lobby_key, json.dumps(lobby_data))
 
-        if room:
+        if room is not None:
             return jsonify({'room': room})
         else:
             return jsonify({'error': 'Player not found in lobby'}), 404
@@ -861,6 +861,21 @@ def recalculate_room_assignments(lobby_data):
             num_initial_assignments=10,
             max_attempts_per_assignment=10
         )
+    # Run the simulation
+    result = simulation.run_simulation(
+        players=players,
+        num_rooms=num_rooms,
+        simulation_time=simulation_time,
+        assignment_interval=assignment_interval,
+        min_time_in_room_minutes=min_time_in_room_minutes,
+        difficulty_ratio=difficulty_ratio,
+        min_time_per_kill=min_time_per_kill,
+        require_same_room=require_same_room,
+        min_seconds_until_discovery=min_seconds_until_discovery,
+        max_seconds_until_discovery=max_seconds_until_discovery,
+        num_initial_assignments=10,
+        max_attempts_per_assignment=10
+    )
 
         if result is not None:
             print("Simulation successful. Updating room assignments.")
