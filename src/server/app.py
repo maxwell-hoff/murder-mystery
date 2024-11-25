@@ -240,28 +240,28 @@ def get_room(lobby_code):
         current_time_ms = int(round(time.time() * 1000))
 
         if assignment_interval and assignment_start_time and assignments_per_interval:
-        print(f"Assignment interval: {assignment_interval}")
-        print(f"Assignment start time: {assignment_start_time}")
-        print(f"Number of assignments per interval: {len(assignments_per_interval)}")
-        print(f"Current assignment index: {current_assignment_index}")
+            print(f"Assignment interval: {assignment_interval}")
+            print(f"Assignment start time: {assignment_start_time}")
+            print(f"Number of assignments per interval: {len(assignments_per_interval)}")
+            print(f"Current assignment index: {current_assignment_index}")
 
-        elapsed_time_ms = current_time_ms - assignment_start_time
-        interval_number = int(elapsed_time_ms / (assignment_interval * 1000))
+            elapsed_time_ms = current_time_ms - assignment_start_time
+            interval_number = int(elapsed_time_ms / (assignment_interval * 1000))
 
-        print(f"Elapsed time (ms): {elapsed_time_ms}")
-        print(f"Calculated interval number: {interval_number}")
+            print(f"Elapsed time (ms): {elapsed_time_ms}")
+            print(f"Calculated interval number: {interval_number}")
 
-        if interval_number >= len(assignments_per_interval):
-            interval_number = len(assignments_per_interval) - 1  # Stay at last assignment
+            if interval_number >= len(assignments_per_interval):
+                interval_number = len(assignments_per_interval) - 1  # Stay at last assignment
 
-        if interval_number != current_assignment_index:
-            # Update room assignments
-            lobby_data['current_assignment_index'] = interval_number
-            lobby_data['room_assignments'] = assignments_per_interval[interval_number]
-            # Update lobby data in Redis
-            r.set(lobby_key, json.dumps(lobby_data))
-    else:
-        print("Assignment interval, start time, or assignments per interval not found.")
+            if interval_number != current_assignment_index:
+                # Update room assignments
+                lobby_data['current_assignment_index'] = interval_number
+                lobby_data['room_assignments'] = assignments_per_interval[interval_number]
+                # Update lobby data in Redis
+                r.set(lobby_key, json.dumps(lobby_data))
+        else:
+            print("Assignment interval, start time, or assignments per interval not found.")
 
         # Fetch current room
         room = lobby_data['room_assignments'].get(player_name)
