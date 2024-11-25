@@ -240,18 +240,28 @@ def get_room(lobby_code):
         current_time_ms = int(round(time.time() * 1000))
 
         if assignment_interval and assignment_start_time and assignments_per_interval:
-            elapsed_time_ms = current_time_ms - assignment_start_time
-            interval_number = int(elapsed_time_ms / (assignment_interval * 1000))
+        print(f"Assignment interval: {assignment_interval}")
+        print(f"Assignment start time: {assignment_start_time}")
+        print(f"Number of assignments per interval: {len(assignments_per_interval)}")
+        print(f"Current assignment index: {current_assignment_index}")
 
-            if interval_number >= len(assignments_per_interval):
-                interval_number = len(assignments_per_interval) - 1  # Stay at last assignment
+        elapsed_time_ms = current_time_ms - assignment_start_time
+        interval_number = int(elapsed_time_ms / (assignment_interval * 1000))
 
-            if interval_number != current_assignment_index:
-                # Update room assignments
-                lobby_data['current_assignment_index'] = interval_number
-                lobby_data['room_assignments'] = assignments_per_interval[interval_number]
-                # Update lobby data in Redis
-                r.set(lobby_key, json.dumps(lobby_data))
+        print(f"Elapsed time (ms): {elapsed_time_ms}")
+        print(f"Calculated interval number: {interval_number}")
+
+        if interval_number >= len(assignments_per_interval):
+            interval_number = len(assignments_per_interval) - 1  # Stay at last assignment
+
+        if interval_number != current_assignment_index:
+            # Update room assignments
+            lobby_data['current_assignment_index'] = interval_number
+            lobby_data['room_assignments'] = assignments_per_interval[interval_number]
+            # Update lobby data in Redis
+            r.set(lobby_key, json.dumps(lobby_data))
+    else:
+        print("Assignment interval, start time, or assignments per interval not found.")
 
         # Fetch current room
         room = lobby_data['room_assignments'].get(player_name)
@@ -520,6 +530,9 @@ def leave_lobby(lobby_code):
 @app.route('/reset_lobby/<lobby_code>', methods=['POST'])
 def reset_lobby(lobby_code):
     print(f"reset_lobby called with lobby_code: {lobby_code}")
+    lobby_data['assignment_start_time'] = None
+    lobby_data['assignment_interval'] = None
+    lobby_data['current_assignment_index'] = 0
     data = request.get_json()
     player_name = data.get('player_name')
     print(f"Player name received: {player_name}")
@@ -882,24 +895,27 @@ def recalculate_room_assignments(lobby_data):
         # Store the assignments per interval in lobby_data
         lobby_data['assignments_per_interval'] = assignments_per_interval_with_names
 
-        # If assignment_start_time already exists, calculate the current interval
+        # Store assignment_interval in lobby_data
+        lobby_data['assignment_interval'] = assignment_interval
+
+        # Initialize or update assignment_start_time and current_assignment_index
         assignment_start_time = lobby_data.get('assignment_start_time')
         if assignment_start_time:
+            # Calculate current interval based on existing assignment_start_time
             current_time_ms = int(round(time.time() * 1000))
             elapsed_time_ms = current_time_ms - assignment_start_time
             interval_number = int(elapsed_time_ms / (assignment_interval * 1000))
+            if interval_number >= len(assignments_per_interval_with_names):
+                interval_number = len(assignments_per_interval_with_names) - 1
             lobby_data['current_assignment_index'] = interval_number
-            # Update room assignments to match the current interval
-            if interval_number < len(assignments_per_interval_with_names):
-                lobby_data['room_assignments'] = assignments_per_interval_with_names[interval_number]
-            else:
-                # If the interval exceeds the assignments, use the last one
-                lobby_data['room_assignments'] = assignments_per_interval_with_names[-1]
+            lobby_data['room_assignments'] = assignments_per_interval_with_names[interval_number]
         else:
-            # Initialize assignment_start_time if it doesn't exist
+            # Initialize assignment_start_time
             lobby_data['assignment_start_time'] = int(round(time.time() * 1000))
             lobby_data['current_assignment_index'] = 0
             lobby_data['room_assignments'] = assignments_per_interval_with_names[0]
+    else:
+        print("Simulation failed to find a suitable assignment. Keeping existing room assignments.")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
